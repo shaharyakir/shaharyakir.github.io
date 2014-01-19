@@ -1436,8 +1436,8 @@ $(document).ready(function () {
                                 description: (
                                     '03:30 Work!'
                                     ),
-                                link: 'http://localhost:63343/Net',
-                                picture: 'http://localhost:63343/Net/images/logo.png'
+                                link: 'http://shaharyakir.github.io/',
+                                picture: 'http://shaharyakir.github.io/images/logo.png'
                                 /*link: 'http://users14.jabry.com/nettime',*/
 //                                picture: 'http://users14.jabry.com/nettime/images/logo.png'
                             },
