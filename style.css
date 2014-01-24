@@ -1,3 +1,9 @@
+/* jQuery UI */
+.ui-draggable, .ui-droppable {
+    background-position: top;
+}
+
+
 /* General */
 .clear {
     clear: both;
@@ -495,6 +501,36 @@ Chart
 .forward_icon:hover {
     background-image: url('images/forward_hover.png');
 }
+
+#facebook_icon {
+    background-position: center;
+    background-image: url('images/facebook.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+#facebook_icon:hover {
+    background-image: url('images/facebook_hover.png');
+}
+
+#facebook_icon_large {
+    background-position: center;
+    background-image: url('images/connect_with_facebook.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+#facebook_icon_large:hover {
+    background-image: url('images/connect_with_facebook_hover.png');
+}
+
+#back_to_login_with_facebook:hover,#login_with_nettime:hover{
+    color:#ea3955;
+    text-decoration:underline;
+
+}
+
+
 
 .overlay {
     background: darkgray;

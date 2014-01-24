@@ -19,7 +19,7 @@
 <div id="outerBox">
 <div id="innerBox">
 <div id="settings_panel">
-    <div class="icon" id="logo_icon"></div>
+    <div class="icon" id="logo_icon" style="height: 32px;width: 32px;background-size: cover;background-repeat: no-repeat"></div>
     <div class="icon" id="settings_icon" style="display: none"></div>
     <div class="section panel" id="settings_container" style="display: none;height:50px">
         <span style="margin-bottom: 12px;font-weight: bold;display: block;text-align: center">Settings</span>
@@ -56,6 +56,7 @@
                     </span>
         </div>
     </div>
+    <div class="icon" id="facebook_icon" style="display: none"></div>
     <div id="user_panel" style="float: right; display: none">
         <div class="icon" id="user_icon"></div>
         <span id="current_user"></span>
@@ -68,10 +69,20 @@
 
 <div id="user_login_container">
     <h2>Welcome to Net Time</h2>
-    <span style="font-size: 22px">Username</span>
-    <input id="username_input" style="font-size: 22px;width: 300px;margin-left: 12px;font-family: 'Exo 2'"
-           type="email"/>
-    <span id="login_button" class="grayButton" style="font-size:22px;margin-left: 12px;padding:3px">Login</span>
+
+    <div style="width: 250px;height: 50px" id="facebook_icon_large"></div>
+    <div style="margin-top:4px">
+        <div>Don't have facebook? <span id="login_with_nettime">Login with NetTime</span></div>
+
+        <div id="nettime_login_container" style="display: none">
+            <span style="font-size: 22px">Username</span>
+            <input id="username_input" style="font-size: 22px;width: 300px;margin-left: 12px;font-family: 'Exo 2'"
+                   type="email"/>
+            <span id="login_button" class="grayButton" style="font-size:22px;margin-left: 12px;padding:3px">Login</span>
+        </div>
+        <div style="display: none"><span id="back_to_login_with_facebook">Login with Facebook</span></div>
+    </div>
+
 
     <div style="margin-top:8px;display:none" id="user_signup">
         <span>No such user exists. Would you like to sign up?</span>
@@ -296,7 +307,8 @@
 <div class="clear"></div>
 
 <div class="expandCollapseTitle" style="border-top-left-radius: 6px;border-top-right-radius: 6px">Log</div>
-<div id="log_container" class="section" style="border-top-right-radius: 0px;border-top-left-radius: 0px;position: relative">
+<div id="log_container" class="section"
+     style="border-top-right-radius: 0px;border-top-left-radius: 0px;position: relative">
     <div style="text-align: center;" class="log_date date">
         <span class="icon back_icon log_today_move_button" id="log_today_back_button"
               style="height: 14px;width:14px;z-index: 11"></span>
@@ -307,7 +319,7 @@
     <input id="log_input" style="font-size: 22px;width: 100%;margin-bottom:12px;font-family: 'Exo 2'"
            type="text"/>
 
-        <div class="overlay" id="log_overlay"></div>
+    <div class="overlay" id="log_overlay"></div>
     <div id="log_rows" style="">
         <table>
             <tbody id="log_table">
