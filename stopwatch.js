@@ -10,7 +10,6 @@ var timeOut = 0;
 /* Settings*/
 var setting_show_breaks_on_graphs = false;
 
-/*Constants*/
 that.Constants = {
     Parse: {
         WEEKLY_GOAL_TYPE: "WEEKLY",
@@ -35,8 +34,6 @@ that.Constants = {
         COOKIE_CURRENT_PROJECT_TITLE: "currentProjectTitle"
     }
 };
-
-/* Cookie functions */
 that.CookieHandler = {
     createCookie: function (name, value) {
         var exdays = 365;
@@ -59,7 +56,6 @@ that.CookieHandler = {
         this.createCookie(name, "", -1);
     }
 }
-
 that.Session = {
     facebookLogin: false,
     clear: function () {
@@ -82,9 +78,67 @@ that.Session = {
 
         that.Session.facebookLogin = false;
         Parse.User.logOut();
-    }
-}
+    },
+    updateAllObjects: function () {
+        that.Dashboard.updateDashboard();
+        that.Goals.isAllGoalsSet().then(function (value) {
+            if (value !== true) {
+                $('#warning_goals').show();
+            }
+            else {
+                $('#warning_goals').hide();
+            }
+        });
+        that.Chart.renderCharts();
+    },
+    initParse: function () {
+        if (document.title == "Test") {
+            Parse.initialize("75yStvvNmep3ZhsC5VAtMBSUGjoECMmmNI7aHxTK", "BZxsbuz6tYffL4Ld09pO5tswvBVrvVLoROezGlpR");
+        }
+        else {
+            Parse.initialize("vnkcS0pKaV0JYhW37n7DI2JPpiAftf5b6WmXM0Kw", "bzqGddUaGZc7cjsp7RxJfsOVMQVFXGCMiKzxbZz5");
+        }
+    },
+    onUserLogin:function() {
+    $('#user_login_container').hide();
+    $('#projects_container').fadeIn(1000);
 
+    // TODO:improve
+    if (that.Session.facebookLogin === true) {
+        FB.api(
+            "/me?fields=name",
+            function (response) {
+                if (response && !response.error) {
+                    $('#current_user').text(response.name);
+                }
+            }
+        );
+    }
+    else {
+        $('#current_user').text(Parse.User.current().getUsername());
+    }
+
+    $('#settings_panel').show();
+    $('#user_panel').show();
+
+    var projectIdFromCookie = that.CookieHandler.readCookie(that.Constants.Cookies.COOKIE_CURRENT_PROJECT);
+    var projectTitleFromCookie = that.CookieHandler.readCookie(that.Constants.Cookies.COOKIE_CURRENT_PROJECT_TITLE);
+    var isProjectCached = ((projectIdFromCookie != "") && (projectTitleFromCookie != "") && (projectIdFromCookie != null) && (projectTitleFromCookie != null));
+    if (isProjectCached == true) {
+        projectTitleFromCookie = decodeURIComponent(projectTitleFromCookie);
+        that.Projects.onProjectLoad(projectIdFromCookie, projectTitleFromCookie);
+    }
+    else {
+        that.Projects.loadProjects();
+    }
+},
+    loadApplication:function() {
+        $('#application').fadeIn(1000);
+        that.Log.loadLogEntries();
+        that.Session.updateAllObjects();
+    }
+
+}
 that.Facebook = {
     init: function () {
 
@@ -104,11 +158,11 @@ that.Facebook = {
                         if (!user.existed()) {
                             console.log("User signed up and logged in through Facebook!");
                             that.Session.facebookLogin = true;
-                            onUserLogin();
+                            that.Session.onUserLogin();
                         } else {
                             console.log("User logged in through Facebook!");
                             that.Session.facebookLogin = true;
-                            onUserLogin();
+                            that.Session.onUserLogin();
                         }
                     },
                     error: function (user, error) {
@@ -119,7 +173,7 @@ that.Facebook = {
             else {
                 console.log("User was already logged in through Facebook! Proceeding to nettime login");
                 that.Session.facebookLogin = true;
-                onUserLogin();
+                that.Session.onUserLogin();
             }
         });
 
@@ -135,7 +189,7 @@ that.Facebook = {
                 description: (
                     'I worked for ' + $('#dashboard_today_hours').text() + ' hours today ' +
                         'on my ' + $('#project_title').text() + ' project ' +
-                        'and reached ' + $('#daily_goal_percentage').text() + ' of my goal!'
+                        'and reached ' + $('#dashboard_today_percentage').text() + ' of my goal!'
                     ),
                 link: 'http://shaharyakir.github.io/',
                 picture: 'http://shaharyakir.github.io/images/logo.png'
@@ -150,590 +204,719 @@ that.Facebook = {
         );
     }
 }
+that.Log = {
 
+    loadLogEntries: function (date) {
+        $('#log_table').text(" ");
+        var Log = Parse.Object.extend("Logs");
+        var query = new Parse.Query(Log);
+        date = date ? date : that.Utils.Date.getShortDate();
+        toggleLoading('#log_overlay', true);
+        query.equalTo("project", currentProject);
+        query.equalTo("date", date);
+        query.notEqualTo("state", that.Constants.Parse.STATE_DISABLED);
+        query.find().then(function (results) {
+            toggleLoading('#log_overlay', true);
+            for (var i = 0; i < results.length; i++) {
+                var object = results[i];
+                that.Log.addLogEntry(object);
+            }
+        });
+    },
+    addLogEntry: function (parseObject) {
+
+        /*<tr>
+         <td>ICON</td>
+         <td>11:11</td>
+         <td>Added Bla</td>
+         </tr>*/
+
+        var element =
+            "<tr parseid=''" + parseObject.id + "'>" +
+                /* "<td class='log_entry_icon'>"+parseObject.get("type")+"</td>" +*/
+                "<td class='log_entry_time'>" + parseObject.get("time") + "</td>" +
+                "<td class='log_entry_data'>" + parseObject.get("data") + "</td>"
+        "</tr>";
+
+        $('#log_table').append(element);
+    }
+
+
+}
 that.Goals = {
     isAllGoalsSet: function () {
         var promise = $.Deferred();
         var answer = new Boolean(true);
-        isDailyGoalSet()
+        that.Goals.isDailyGoalSet()
             .then(function (value) {
 
                 answer = answer && (value != undefined);
 
             })
-            .then(isWeeklyGoalSet()
+            .then(that.Goals.isWeeklyGoalSet()
                 .then(function (value) {
                     answer = answer && (value != undefined);
                 }))
-            .then(isMonthlyGoalSet()
+            .then(that.Goals.isMonthlyGoalSet()
                 .then(function (value) {
                     answer = answer && (value != undefined);
                     promise.resolve(answer);
                 }));
         return promise;
-    }
-}
+    },
+    getGoalTime: function (value) {
+        return that.Utils.Time.secondsToString(value).substr(0, 5);
+    },
+    isGoalSet: function (date, type) {
+        var promise = $.Deferred();
+        var parseGoal = Parse.Object.extend("Goals");
+        var query = new Parse.Query(parseGoal);
+        query.equalTo("date", date);
+        query.equalTo("type", type);
+        query.equalTo("project", currentProject)
+        query.first().then(function (result) {
 
-/*
- ================
- Stopwatch class
- ================
- */
-var clsStopwatch = function () {
-    // Private vars
-    var startAt = 0;	// Time of last start / resume. (0 if not running)
-    var lapTime = 0;	// Time on the clock when last stopped in milliseconds
+            promise.resolve(result);
+        });
+        return promise.promise();
+    },
+    setGoal: function (date, type, length) {
+        var parseGoal = Parse.Object.extend("Goals");
+        var parseGoalRecord;
 
-    var now = function () {
-        return (new Date()).getTime();
-    };
+        var promise = $.Deferred();
 
-    // Public methods
-    // Start or resume
-    this.start = function () {
-        startAt = startAt ? startAt : now();
-    };
-
-    // Stop or pause
-    this.stop = function () {
-        // If running, update elapsed time otherwise keep it
-        lapTime = startAt ? lapTime + now() - startAt : lapTime;
-        startAt = 0; // Paused
-    };
-
-    // Reset
-    this.reset = function () {
-        lapTime = startAt = 0;
-    };
-
-    // Duration
-    this.time = function () {
-        return lapTime + (startAt ? now() - startAt : 0);
-    };
-
-    this.setLapTime = function (newLap) {
-        //startAt=now();
-        lapTime = parseInt(newLap);
-    }
-};
-
-var x = new clsStopwatch();
-var time;
-var clocktimer;
-
-/*
- ===========================
- Stopwatch related functions
- ===========================
- */
-function stop() {
-
-
-    x.stop();
-
-    clearInterval(clocktimer);
-
-    that.CookieHandler.eraseCookie(that.Constants.Cookies.COOKIE_CURRENT_LAP);
-
-    reset();
-
-
-}
-function reset() {
-    x.reset();
-    update();
-}
-function update() {
-    $('#time').text(formatTime(x.time()));
-    that.CookieHandler.createCookie(that.Constants.Cookies.COOKIE_CURRENT_LAP, x.time());
-    document.title = "(" + formatTime(x.time()) + ")" + " Running";
-
-}
-
-function start() {
-
-    var button = document.getElementById("startButton");
-
-    if (button.innerHTML == "Start") {
-        clocktimer = setInterval("update()", that.Constants.General.UPDATE_INTERVAL);
-        x.start();
-    }
-    else {
-        saveLap(timeStringToSeconds($('#time').text()), '#startButton');
-        stop();
-        document.title = "Stopped";
-    }
-    button.innerHTML = button.innerHTML == "Start" ? "Stop" : "Start";
-}
-
-function saveLap(value, jqueryPressedElement, callback, isManual) {
-
-    if (value > 0) {
-        toggleLoading(jqueryPressedElement);
-        var TestObject = Parse.Object.extend("Laps");
-        var testObject = new TestObject();
-        isManual = isManual ? isManual : false;
-        testObject.save({length: value, date: getShortDate(), isManualLap: isManual, project: currentProject}).then(function () {
-            toggleLoading(jqueryPressedElement);
-            updateAllObjects();
-            if (callback) {
-                callback()
+        $.when(that.Goals.isGoalSet(date, type).done(function (value) {
+            if (value) {
+                parseGoalRecord = value;
+                parseGoalRecord.set("goal", length);
             }
-            ;
+            else {
+                parseGoalRecord = new parseGoal();
+                parseGoalRecord.set("date", date);
+                parseGoalRecord.set("goal", length);
+                parseGoalRecord.set("type", type);
+            }
+            parseGoalRecord.set("project", currentProject);
+            parseGoalRecord.save().then(function () {
+                promise.resolve();
+                that.Session.updateAllObjects();
+            });
+        }));
+
+        return promise.promise();
+    },
+    setDailyGoal: function () {
+        var goal = that.Utils.Time.timeStringToSeconds($("#goal_time_to_set_day").text());
+        var date = that.Utils.Date.getShortDate();
+        that.Goals.setGoal(date, that.Constants.Parse.DAILY_GOAL_TYPE, goal).then(function () {
+            $("#set_daily_goal_section").hide();
         });
-    }
-}
+    },
+    isDailyGoalSet: function (date) {
+        var promise = $.Deferred();
+        date = date ? date : that.Utils.Date.getShortDate();
 
-function updateAllObjects() {
-    updateDashboard();
-    showWarningIfNotAllGoalsAreSet();
-    renderCharts();
-}
-
-function showWarningIfNotAllGoalsAreSet(){
-    that.Goals.isAllGoalsSet().then(function(value){
-        if (value !== true){
-            $('#warning_goals').show();
-        }
-        else{
-            $('#warning_goals').hide();
-        }
-    });
-}
-
-/*
- ================
- Util functions
- ================
- */
-
-function dividedValueToPercentage(val) {
-    var percentage = val * 100;
-    percentage = Math.ceil(percentage * 10) / 10;
-    percentage = (!isNaN(percentage) && percentage != Infinity) ? percentage + "%" : "0%";
-    return percentage;
-}
-
-function pad(num, size) {
-    var s = "0000" + num;
-    return s.substr(s.length - size);
-}
-
-function formatTime(time) {
-    var h = m = s = ms = 0;
-    var newTime = '';
-
-    h = Math.floor(time / (60 * 60 * 1000));
-    time = time % (60 * 60 * 1000);
-    m = Math.floor(time / (60 * 1000));
-    time = time % (60 * 1000);
-    s = Math.floor(time / 1000);
-
-    newTime = pad(h, 2) + ':' + pad(m, 2) + ':' + pad(s, 2);
-    return newTime;
-}
-
-function getShortDate(date) {
-
-    if (!date) {
-        date = new Date();
-    }
-
-    var dd = date.getDate();
-    var mm = date.getMonth() + 1; //January is 0!
-    var yyyy = date.getFullYear();
-    if (dd < 10) {
-        dd = '0' + dd
-    }
-    if (mm < 10) {
-        mm = '0' + mm
-    }
-    date = mm + '/' + dd + '/' + yyyy;
-    return date;
-}
-
-function timeStringToSeconds(string) {
-    var number;
-
-    var hours = parseInt(string.split(":")[0]);
-    var minutes = parseInt(string.split(":")[1]);
-    var seconds = parseInt(string.split(":")[2]);
-    seconds = seconds || 0;
-
-    number = (hours * 3600) + (minutes * 60) + seconds;
-
-    return parseInt(number);
-
-}
-
-function secondsToString(time) {
-    var h = m = s = ms = 0;
-    var newTime = '';
-
-    h = Math.floor(time / (60 * 60));
-    time = time % (60 * 60);
-    m = Math.floor(time / (60));
-    time = time % (60 );
-    s = Math.floor(time);
-
-    newTime = pad(h, 2) + ':' + pad(m, 2) + ':' + pad(s, 2);
-    return newTime;
-}
-// date - a Date object
-// offset - an amount in seconds to subtract or add to the time
-function dateObjectToHHMM(date, offset) {
-    date = offset ? (new Date(date - offset * 1000)) : date;
-    var hours = date.getHours() < 10 ? '0' + date.getHours() : date.getHours();
-    var minutes = date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes();
-    return hours + ":" + minutes;
-}
-
-function initParse() {
-    if (document.title == "Test") {
-        Parse.initialize("75yStvvNmep3ZhsC5VAtMBSUGjoECMmmNI7aHxTK", "BZxsbuz6tYffL4Ld09pO5tswvBVrvVLoROezGlpR");
-    }
-    else {
-        Parse.initialize("vnkcS0pKaV0JYhW37n7DI2JPpiAftf5b6WmXM0Kw", "bzqGddUaGZc7cjsp7RxJfsOVMQVFXGCMiKzxbZz5");
-    }
-}
-
-function findFirstDateInTheWeek(date) {
-
-    date = new Date(date);
-
-    while (date.getDay() != 0) {
-        date.setDate(date.getDate() - 1);
-    }
-
-    return date;
-}
-
-function findFirstDateInMonth(date) {
-
-    date = new Date(date);
-
-    while (date.getDate() != 1) {
-        date.setDate(date.getDate() - 1);
-    }
-
-    return date;
-}
-
-function findLastDateInMonth(date) {
-    var first = findFirstDateInMonth(date);
-    var last = new Date();
-    last.setMonth(first.getMonth() + 1);
-    last.setDate(first.getDate() - 1);
-    last.setFullYear(first.getFullYear());
-    return last;
-}
-
-function findLastDateInWeek(date) {
-    date = new Date(date);
-    var last = findFirstDateInTheWeek(date);
-    last.setDate(date.getDate() + 6);
-    return last;
-}
-
-
-/*
- ================
- OnLoad
- ================
- */
-function show() {
-
-
-    time = document.getElementById('time');
-
-    // Restore unsaved lap if browser exited unexpectedly
-    var unsavedLap = that.CookieHandler.readCookie(that.Constants.Cookies.COOKIE_CURRENT_LAP);
-    if (unsavedLap > 0) {
-        x.setLapTime(unsavedLap);
-    }
-
-    time.innerHTML = formatTime(x.time()); // set the timer initial time
-
-
-    /*updateAllObjects();*/
-}
-
-
-/*
- ================
- Weekly table
- ================
-
- function buildWeekTable() {
-
- //$('this_week_table_tbody').text('');
- toggleLoading('#this_week_table');
- var days = [];
- var counter = 0;
- var doQuery = function (currDate) {
- var day = {};
- day.date = currDate;
- day.length = 0;
- day.goal = 0;
- var Laps = Parse.Object.extend("Laps");
- var query = new Parse.Query(Laps);
- query.equalTo("date", currDate);
- query.find().then(function (results) {
- var totalLength = 0;
- for (var i = 0; i < results.length; i++) {
- var object = results[i];
- totalLength += parseInt(object.get('length'));
- }
-
- day.length = totalLength
- }
- ).then(function () {
- var DailyGoals = Parse.Object.extend("DailyGoals");
- var query = new Parse.Query(DailyGoals);
- query.equalTo("date", currDate);
- return query.find();
-
- }).then(function (results) {
-
- if (results[0]) {
- day.goal = parseInt(results[0].get("goal"));
- }
- else {
- day.goal = 0;
- }
- }).then(function () { // Retrieve the last and first lap date
- var Laps = Parse.Object.extend("Laps");
- var query = new Parse.Query(Laps);
- query.equalTo("date", currDate);
- query.ascending("createdAt");
- return query.first();
- })
- .then(function (object) {
- day.firstLap = object ? dateObjectToHHMM(object.createdAt, (object.get("length"))) : "00:00";
- })
- .then(function () {
- var Laps = Parse.Object.extend("Laps");
- var query = new Parse.Query(Laps);
- query.equalTo("date", currDate);
- query.descending("createdAt");
- return query.first();
- })
- .then(function (object) {
- day.lastLap = object ? dateObjectToHHMM(object.createdAt) : "00:00";
- }
- )
- .always(function () {
- counter++;
- days.push(day);
- if (counter === 7) {
- days.sort(function (a, b) {
- a = new Date(a.date);
- b = new Date(b.date);
- return a > b ? -1 : a < b ? 1 : 0;
- });
- days.sort();
- callbackBuildWeekTable(days);
- }
- });
- }
-
- for (var i = 6; i >= 0; i--) {
- date = getShortDate(i * -1);
- doQuery(date);
- }
- }
- function callbackBuildWeekTable(days) {
- var table = document.getElementById("this_week_table_tbody");
- table.innerHTML = "";
- var i, row, date, length, dayCell, lengthCell, goalCell, percentageCell, firstLapCell, lastLapCell;
-
- for (i = 0; i < days.length; i++) {
-
- var percentage = ((days[i].length / days[i].goal) * 100);
- percentage = Math.ceil(percentage * 10) / 10;
- percentage = (!isNaN(percentage) && percentage != Infinity) ? percentage + "%" : "0%";
-
- row = document.createElement('tr');
- dayCell = document.createElement('td');
- dayCell.appendChild(document.createTextNode(days[i].date));
- lengthCell = document.createElement('td');
- lengthCell.appendChild(document.createTextNode(secondsToString(days[i].length)));
- goalCell = document.createElement('td');
- goalCell.appendChild(document.createTextNode(secondsToString(days[i].goal)));
- percentageCell = document.createElement('td');
- percentageCell.appendChild(document.createTextNode(percentage));
- firstLapCell = document.createElement('td');
- firstLapCell.appendChild(document.createTextNode(days[i].firstLap));
- lastLapCell = document.createElement('td');
- lastLapCell.appendChild(document.createTextNode(days[i].lastLap));
-
- row.appendChild(dayCell);
- row.appendChild(lengthCell);
- row.appendChild(goalCell);
- row.appendChild(percentageCell);
- row.appendChild(firstLapCell);
- row.appendChild(lastLapCell);
-
- table.appendChild(row);
- }
- toggleLoading('#this_week_table');
- }
-
- */
-
-
-function getGoalTime(value) {
-    return secondsToString(value).substr(0, 5);
-}
-function isGoalSet(date, type) {
-    var promise = $.Deferred();
-    var parseGoal = Parse.Object.extend("Goals");
-    var query = new Parse.Query(parseGoal);
-    query.equalTo("date", date);
-    query.equalTo("type", type);
-    query.equalTo("project", currentProject)
-    query.first().then(function (result) {
-
-        promise.resolve(result);
-    });
-    return promise.promise();
-}
-
-function setGoal(date, type, length) {
-    var parseGoal = Parse.Object.extend("Goals");
-    var parseGoalRecord;
-
-    var promise = $.Deferred();
-
-    $.when(isGoalSet(date, type).done(function (value) {
-        if (value) {
-            parseGoalRecord = value;
-            parseGoalRecord.set("goal", length);
-        }
-        else {
-            parseGoalRecord = new parseGoal();
-            parseGoalRecord.set("date", date);
-            parseGoalRecord.set("goal", length);
-            parseGoalRecord.set("type", type);
-        }
-        parseGoalRecord.set("project", currentProject);
-        parseGoalRecord.save().then(function () {
-            promise.resolve();
-            updateAllObjects();
+        that.Goals.isGoalSet(date, that.Constants.Parse.DAILY_GOAL_TYPE).then(function (value) {
+            promise.resolve(value);
+            if (!value) {
+                $("#set_daily_goal_section").show();
+            }
+            else {
+                $("#dashboard_today_goal").text(that.Goals.getGoalTime(value.get("goal")));
+                $("#goal_time_to_set_day").text(that.Goals.getGoalTime(value.get("goal")));
+                $("#dailyGoalSlider").slider("value", value.get("goal"));
+            }
         });
-    }));
 
-    return promise.promise();
+        return promise.promise();
+    },
+    setWeeklyGoal: function () {
+        var goal = that.Utils.Time.timeStringToSeconds($("#goal_time_to_set_week").text());
+        var date = that.Utils.Date.getShortDate(that.Utils.Date.findFirstDateInTheWeek(that.Utils.Date.getShortDate()));
+        that.Goals.setGoal(date, that.Constants.Parse.WEEKLY_GOAL_TYPE, goal).then(function () {
+            $("#set_weekly_goal_section").hide();
+        });
+    },
+    isWeeklyGoalSet: function (date) {
+        var promise = $.Deferred();
+        date = date ? that.Utils.Date.getShortDate(date) : that.Utils.Date.getShortDate(that.Utils.Date.findFirstDateInTheWeek(that.Utils.Date.getShortDate()));
+
+        $.when(that.Goals.isGoalSet(date, that.Constants.Parse.WEEKLY_GOAL_TYPE).done(function (value) {
+            promise.resolve(value);
+            if (!value) {
+                $("#set_weekly_goal_section").show();
+            }
+            else {
+                $("#dashboard_week_goal").text(that.Goals.getGoalTime(value.get("goal")));
+                $("#goal_time_to_set_week").text(that.Goals.getGoalTime(value.get("goal")));
+                $("#weeklyGoalSlider").slider("value", value.get("goal"));
+            }
+        }));
+
+        return promise.promise();
+    },
+    setMonthlyGoal: function () {
+        var goal = that.Utils.Time.timeStringToSeconds($("#goal_time_to_set_month").text());
+        var date = that.Utils.Date.getShortDate(that.Utils.Date.findFirstDateInMonth(that.Utils.Date.getShortDate()));
+        that.Goals.setGoal(date, that.Constants.Parse.MONTHLY_GOAL_TYPE, goal).then(function () {
+            $("#set_monthly_goal_section").hide();
+        });
+    },
+    isMonthlyGoalSet: function (date) {
+        var promise = $.Deferred();
+        date = date ? that.Utils.Date.getShortDate(date) : that.Utils.Date.getShortDate(that.Utils.Date.findFirstDateInMonth(that.Utils.Date.getShortDate()));
+        $.when(that.Goals.isGoalSet(date, that.Constants.Parse.MONTHLY_GOAL_TYPE).done(function (value) {
+            promise.resolve(value);
+            if (!value) {
+                $("#set_monthly_goal_section").show();
+            }
+            else {
+                $("#dashboard_month_goal").text(that.Goals.getGoalTime(value.get("goal")));
+                $("#goal_time_to_set_month").text(that.Goals.getGoalTime(value.get("goal")));
+                $("#monthlyGoalSlider").slider("value", value.get("goal"));
+            }
+        }));
+
+        return promise.promise();
+    }
 }
+that.Chart = {
+
+    renderCharts: function () {
+        that.Chart.dailyChart();
+        that.Chart.weeklyChart();
+        that.Chart.monthlyChart();
+    },
+    dailyChart: function (date) {
+
+        var promise = $.Deferred();
+        var dps = [];
+        var manualDps = [];
+        var goalDps = [];
+        var firstLap;
+        var manualLapCount = 0;
+        var length = 0;
+
+        var dateToCheck = date ? date : that.Utils.Date.getShortDate();
+
+        toggleLoading('#chart_today_chart_overlay', true);
 
 
-/*
- ================
- Daily Goal
- ================
- */
+        // TODO: handle a case when there's no first lap!!!
+        that.Laps.findFirstLap(dateToCheck)  // Get the first lap (use it as the manual lap start time)
+            .then(function (result) {
+                if (result) {
+                    firstLap = result;
+                }
+                ;
+            })
+            .then(function () {
+                return that.Laps.getManualLapTotalLength(dateToCheck);  // Get today's total manual lap time
+            })
+            .then(function (result) {
+                manualLapCount = result;
+                if (manualLapCount > 0) {
+                    length = manualLapCount;
+                    manualDps.push({x: firstLap, y: 0, markerColor: "yellow"});
+                    manualDps.push({x: firstLap, y: manualLapCount, markerColor: "yellow", indexLabel: "M"});
+                }
+            })
+            .then(function () {
+                return that.Laps.getLaps(dateToCheck);
+            })
+            .then(function (results) {
+                for (var i = 0; i < results.length; i++) {
+                    var object = results[i];
+                    var lapEnd = object.createdAt;
+                    var lapStart = new Date(lapEnd - (object.get("length") * 1000));
 
-function setDailyGoal() {
-    var goal = timeStringToSeconds($("#goal_time_to_set_day").text());
-    var date = getShortDate();
-    setGoal(date, that.Constants.Parse.DAILY_GOAL_TYPE, goal).then(function () {
-        $("#setDailyGoalSection").hide();
-    });
+                    var dp = {x: lapStart, y: length, markerType: "none"};
+
+                    // todo: consolidate points
+
+                    dps.push(dp);
+                    length += ((lapEnd - lapStart) / 1000 / 3600);
+                    length = Math.ceil(length * 1000) / 1000;
+                    dps.push({x: lapEnd, y: length, markerType: "none"});
+
+                    if (setting_show_breaks_on_graphs == true) {
+                        if (((lapStart - prevLapEnd) > (1000 * 300))) {
+                            dps[dps.length - 3].indexLabel = "SB";
+                            dps[dps.length - 3].markerColor = "red";
+                            dps[dps.length - 3].markerType = "circle";
+                            dps[dps.length - 2].indexLabel = "EB";
+                            dps[dps.length - 2].markerColor = "red";
+                            dps[dps.length - 2].markerType = "circle";
+                        }
+                    }
+                    var prevLapEnd = lapEnd;
+                }
+
+                dps.sort(function (a, b) {
+                    a = new Date(a.x);
+                    b = new Date(b.x);
+                    return a > b ? -1 : a < b ? 1 : 0;
+                });
+            }).then(function () {
+                return that.Goals.isDailyGoalSet(dateToCheck)
+            })
+            .then(function (value) {
+                if (dps.length > 0 && value) {
+                    var goal = value.get("goal") / 3600;
+                    goalDps.push({x: dps[0].x, y: goal});
+                    goalDps.push({x: dps[dps.length - 1].x, y: goal});
+                }
+            })
+            .then(function () {
+
+                var chart = new CanvasJS.Chart("chart_today_chart",
+                    {
+                        backgroundColor: "#f8f8f8",
+                        zoomEnabled: true,
+                        height: 290,
+//                    width: "30%",
+                        title: {
+                        },
+                        axisX: {
+                            valueFormatString: "HH:mm",
+                            /* interval:1,
+                             intervalType:"hour"*/
+                        },
+                        axisY: {
+                            includeZero: false,
+                            gridColor: "#f8f8f8",
+                            //valueFormatString: " "
+
+                        },
+                        data: [
+                            {
+                                type: "line",
+                                color: "#ea3955",
+                                dataPoints: dps
+                            },
+                            {
+                                type: "line",
+                                color: "#EAB608",
+                                dataPoints: manualDps
+                            },
+                            {
+                                type: "line",
+                                color: "#00CE72",
+                                dataPoints: goalDps
+                            }
+                        ]
+                    });
+
+                if (dps.length > 0) {
+                    chart.render();
+                }
+                else {
+                    $('#chart_today_chart').text("No data");
+                }
+                toggleLoading('#chart_today_chart_overlay', true);
+                promise.resolve();
+            }
+        );
+
+        return promise.promise();
+    },
+    weeklyChart: function (date) {
+
+        var dps = [];
+        var manualDps = [];
+        var goalDps = [];
+        var firstLap;
+        var manualLapCount = 0;
+        var length = 0;
+        var promise = $.Deferred();
+
+        var dateToCheck = date ? date : that.Utils.Date.getShortDate();
+        toggleLoading('#chart_week_chart_overlay', true);
+
+        var start = that.Utils.Date.findFirstDateInTheWeek(dateToCheck);
+        var end = that.Utils.Date.findLastDateInWeek(dateToCheck);
+
+        // TODO: handle a case when there's no first lap!!!
+        that.Laps.findFirstLap(start, end)  // Get the first lap (use it as the manual lap start time)
+            .then(function (result) {
+                if (result) {
+                    firstLap = result;
+                }
+                ;
+            })
+            .then(function () {
+                return that.Laps.getManualLapTotalLength(start, end);  // Get total manual lap time
+            })
+            .then(function (result) {
+                manualLapCount = result;
+                if (manualLapCount > 0) {
+                    length = manualLapCount;
+                    if (firstLap) {
+                        manualDps.push({x: firstLap, y: 0, markerColor: "yellow"});
+                        manualDps.push({x: firstLap, y: manualLapCount, markerColor: "yellow", indexLabel: "M"});
+                    }
+                }
+            })
+            .then(function () {
+                return that.Laps.getLaps(start, end);
+            })
+            .then(function (results) {
+                for (var i = 0; i < results.length; i++) {
+                    var object = results[i];
+                    var lapEnd = object.createdAt;
+                    var lapStart = new Date(lapEnd - (object.get("length") * 1000));
+
+                    var dp = {x: lapStart, y: length, markerType: "none"};
+
+                    // todo: consolidate points
+
+                    dps.push(dp);
+                    length += ((lapEnd - lapStart) / 1000 / 3600);
+                    length = Math.ceil(length * 1000) / 1000;
+                    dps.push({x: lapEnd, y: length, markerType: "none"});
+
+                    if (setting_show_breaks_on_graphs == true) {
+                        if (((lapStart - prevLapEnd) > (1000 * 300))) {
+                            dps[dps.length - 3].indexLabel = "SB";
+                            dps[dps.length - 3].markerColor = "red";
+                            dps[dps.length - 3].markerType = "circle";
+                            dps[dps.length - 2].indexLabel = "EB";
+                            dps[dps.length - 2].markerColor = "red";
+                            dps[dps.length - 2].markerType = "circle";
+                        }
+                    }
+                    var prevLapEnd = lapEnd;
+                }
+
+                dps.sort(function (a, b) {
+                    a = new Date(a.x);
+                    b = new Date(b.x);
+                    return a > b ? -1 : a < b ? 1 : 0;
+                });
+            }).then(function () {
+                return that.Goals.isWeeklyGoalSet(start);
+            })
+            .then(function (value) {
+                if (dps.length > 0 && value) {
+                    var goal = value.get("goal") / 3600;
+
+                    goalDps.push({x: dps[0].x, y: goal});
+                    goalDps.push({x: dps[dps.length - 1].x, y: goal});
+                }
+            })
+            .then(function () {
+
+                var chartx = new CanvasJS.Chart("chart_week_chart",
+                    {
+                        backgroundColor: "#f8f8f8",
+                        zoomEnabled: true,
+                        height: 290,
+//                    width: 650,
+                        title: {
+                        },
+                        axisX: {
+                            valueFormatString: "DDD",
+                            interval: 1,
+                            intervalType: "day",
+                        },
+                        axisY: {
+                            includeZero: false,
+                            gridColor: "#f8f8f8",
+                            //valueFormatString: " "
+
+                        },
+                        data: [
+                            {
+                                type: "line",
+                                color: "#ea3955",
+                                dataPoints: dps
+                            },
+                            {
+                                type: "line",
+                                color: "#EAB608",
+                                dataPoints: manualDps
+                            },
+                            {
+                                type: "line",
+                                color: "#00CE72",
+                                dataPoints: goalDps
+                            }
+                        ]
+                    });
+
+
+                if (dps.length > 0) {
+                    chartx.render();
+                }
+                else {
+                    $('#chart_week_chart').text("No data");
+                }
+                toggleLoading('#chart_week_chart_overlay', true);
+                promise.resolve();
+            }
+        );
+        return promise.promise();
+    },
+    monthlyChart: function (date) {
+
+        var dps = [];
+        var manualDps = [];
+        var goalDps = [];
+        var firstLap;
+        var manualLapCount = 0;
+        var length = 0;
+
+        var dateToCheck = date ? date : that.Utils.Date.getShortDate();
+        toggleLoading('#chart_month_chart_overlay', true);
+
+        var start = that.Utils.Date.findFirstDateInMonth(dateToCheck);
+        var end = that.Utils.Date.findLastDateInMonth(dateToCheck);
+
+        // TODO: handle a case when there's no first lap!!!
+        that.Laps.findFirstLap(start, end)  // Get the first lap (use it as the manual lap start time)
+            .then(function (result) {
+                if (result) {
+                    firstLap = result;
+                }
+                ;
+            })
+            .then(function () {
+                return that.Laps.getManualLapTotalLength(start, end);  // Get total manual lap time
+            })
+            .then(function (result) {
+                manualLapCount = result;
+                if (manualLapCount > 0) {
+                    length = manualLapCount;
+                    if (firstLap) {
+                        manualDps.push({x: firstLap, y: 0, markerColor: "yellow"});
+                        manualDps.push({x: firstLap, y: manualLapCount, markerColor: "yellow", indexLabel: "M"});
+                    }
+                }
+            })
+            .then(function () {
+                return that.Laps.getLaps(start, end);
+            })
+            .then(function (results) {
+                for (var i = 0; i < results.length; i++) {
+                    var object = results[i];
+                    var lapEnd = object.createdAt;
+                    var lapStart = new Date(lapEnd - (object.get("length") * 1000));
+
+                    var dp = {x: lapStart, y: length, markerType: "none"};
+
+                    // todo: consolidate points
+
+                    dps.push(dp);
+                    length += ((lapEnd - lapStart) / 1000 / 3600);
+                    length = Math.ceil(length * 1000) / 1000;
+                    dps.push({x: lapEnd, y: length, markerType: "none"});
+
+                    if (setting_show_breaks_on_graphs == true) {
+                        if (((lapStart - prevLapEnd) > (1000 * 300))) {
+                            dps[dps.length - 3].indexLabel = "SB";
+                            dps[dps.length - 3].markerColor = "red";
+                            dps[dps.length - 3].markerType = "circle";
+                            dps[dps.length - 2].indexLabel = "EB";
+                            dps[dps.length - 2].markerColor = "red";
+                            dps[dps.length - 2].markerType = "circle";
+                        }
+                    }
+                    var prevLapEnd = lapEnd;
+                }
+
+                dps.sort(function (a, b) {
+                    a = new Date(a.x);
+                    b = new Date(b.x);
+                    return a > b ? -1 : a < b ? 1 : 0;
+                });
+            }).then(function () {
+                return that.Goals.isMonthlyGoalSet(start)
+            })
+            .then(function (value) {
+                if (dps.length > 0 && value) {
+                    var goal = value.get("goal") / 3600;
+                    goalDps.push({x: dps[0].x, y: goal});
+                    goalDps.push({x: dps[dps.length - 1].x, y: goal});
+                }
+            })
+            .then(function () {
+
+                var chartx = new CanvasJS.Chart("chart_month_chart",
+                    {
+                        backgroundColor: "#f8f8f8",
+                        zoomEnabled: true,
+                        height: 290,
+//                    width: 650,
+                        title: {
+                        },
+                        axisX: {
+                            valueFormatString: "DD",
+                            interval: 1,
+                            intervalType: "day",
+                        },
+                        axisY: {
+                            includeZero: false,
+                            gridColor: "#f8f8f8",
+                            //valueFormatString: " "
+
+                        },
+                        data: [
+                            {
+                                type: "line",
+                                color: "#ea3955",
+                                dataPoints: dps
+                            },
+                            {
+                                type: "line",
+                                color: "#EAB608",
+                                dataPoints: manualDps
+                            },
+                            {
+                                type: "line",
+                                color: "#00CE72",
+                                dataPoints: goalDps
+                            }
+                        ]
+                    });
+
+                if (dps.length > 0) {
+                    chartx.render();
+                }
+                else {
+                    $('#chart_month_chart').text("No data");
+                }
+                toggleLoading('#chart_month_chart_overlay', true);
+
+            }
+        );
+    }
 }
+that.Stopwatch = {
+    clocktimer: 0,
+    startAt: 0,	// Time of last start / resume. (0 if not running)
+    lapTime: 0,	// Time on the clock when last stopped in milliseconds
+    now: function () {
+        return (new Date()).getTime();
+    },
+    start: function () {
+        this.startAt = this.startAt ? this.startAt : this.now();
+    },
+    stop: function () {
+        // If running, update elapsed time otherwise keep it
+        this.lapTime = this.startAt ? this.lapTime + this.now() - this.startAt : this.lapTime;
+        this.startAt = 0; // Paused
+        this.reset();
+        this.update();
+    },
 
-function isDailyGoalSet(date) {
-    var promise = $.Deferred();
-    date = date ? date : getShortDate();
+    reset: function () {
+        this.lapTime = this.startAt = 0;
+    },
 
-    isGoalSet(date, that.Constants.Parse.DAILY_GOAL_TYPE).then(function (value) {
-        promise.resolve(value);
-        if (!value) {
-            $("#setDailyGoalSection").show();
+    time: function () {
+        return this.lapTime + (this.startAt ? this.now() - this.startAt : 0);
+    },
+
+    setLapTime: function (newLap) {
+        this.lapTime = parseInt(newLap);
+    },
+    update: function () {
+        var time = this.time();
+        $('#time').text(that.Utils.Time.formatTime(time));
+        that.CookieHandler.createCookie(that.Constants.Cookies.COOKIE_CURRENT_LAP, time);
+        document.title = "(" + that.Utils.Time.formatTime(time) + ")" + " Running";
+    }
+}
+that.Laps = {
+    saveLap: function (value, jqueryPressedElement, callback, isManual) {
+
+        if (value > 0) {
+            toggleLoading(jqueryPressedElement);
+            var TestObject = Parse.Object.extend("Laps");
+            var testObject = new TestObject();
+            isManual = isManual ? isManual : false;
+            testObject.save({length: value, date: that.Utils.Date.getShortDate(), isManualLap: isManual, project: currentProject}).then(function () {
+                toggleLoading(jqueryPressedElement);
+                that.Session.updateAllObjects();
+                if (callback) {
+                    callback()
+                }
+                ;
+            });
         }
-        else {
-            $("#goalTime_day").text(getGoalTime(value.get("goal")));
-            $("#goal_time_to_set_day").text(getGoalTime(value.get("goal")));
-            $("#dailyGoalSlider").slider("value", value.get("goal"));
+    },
+    getLaps:function(startDate, endDate) {
+        var promise = $.Deferred();
+        var Laps = Parse.Object.extend("Laps");
+        var query = new Parse.Query(Laps);
+
+        if (endDate === undefined || endDate === startDate) {
+            endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
         }
-    });
 
-    return promise.promise();
-}
 
-/*
- ================
- Weekly Goal
- ================
- */
-function setWeeklyGoal() {
-    var goal = timeStringToSeconds($("#goal_time_to_set_week").text());
-    var date = getShortDate(findFirstDateInTheWeek(getShortDate()));
-    setGoal(date, that.Constants.Parse.WEEKLY_GOAL_TYPE, goal).then(function () {
-        $("#setWeeklyGoalSection").hide();
-    });
-}
-
-function isWeeklyGoalSet(date) {
-    var promise = $.Deferred();
-    date = date ? getShortDate(date) : getShortDate(findFirstDateInTheWeek(getShortDate()));
-
-    $.when(isGoalSet(date, that.Constants.Parse.WEEKLY_GOAL_TYPE).done(function (value) {
-        promise.resolve(value);
-        if (!value) {
-            $("#setWeeklyGoalSection").show();
+        query.greaterThanOrEqualTo("createdAt", new Date(startDate));
+        query.lessThanOrEqualTo("createdAt", new Date(endDate));
+        query.limit(1000);
+        query.equalTo("project", currentProject);
+        //query.equalTo("date", "01/12/2014");
+        query.notEqualTo("isManualLap", true);
+        query.ascending("createdAt");
+        query.find().then(function (results) {
+            promise.resolve(results);
+        });
+        return promise.promise();
+    },
+    findFirstLap:function(startDate, endDate){
+        var promise = $.Deferred();
+        var Laps = Parse.Object.extend("Laps");
+        var query = new Parse.Query(Laps);
+        if (endDate === undefined || endDate === startDate) {
+            endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
         }
-        else {
-            $("#goalTime_week").text(getGoalTime(value.get("goal")));
-            $("#goal_time_to_set_week").text(getGoalTime(value.get("goal")));
-            $("#weeklyGoalSlider").slider("value", value.get("goal"));
+        query.greaterThanOrEqualTo("createdAt", new Date(startDate));
+        query.lessThanOrEqualTo("createdAt", new Date(endDate));
+        query.limit(1000);
+        query.notEqualTo("isManualLap", true);
+        query.equalTo("project", currentProject);
+        query.ascending("createdAt");
+        query.first().then(function (result) {
+            var val = result ? (result.createdAt - (result.get("length") * that.Constants.General.MILLISECONDS)) : undefined;
+            promise.resolve(val);
+        });
+
+        return promise.promise();
+    },
+    getManualLapTotalLength:function(startDate, endDate) {
+        var promise = $.Deferred();
+        var Laps = Parse.Object.extend("Laps");
+        var query = new Parse.Query(Laps);
+        var val = 0;
+        if (endDate === undefined || endDate === startDate) {
+            endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
         }
-    }));
 
-    return promise.promise();
-}
+        query.greaterThanOrEqualTo("createdAt", new Date(startDate));
+        query.lessThanOrEqualTo("createdAt", new Date(endDate));
+        query.limit(1000);
+        query.equalTo("isManualLap", true);
+        query.equalTo("project", currentProject);
+        query.find().then(function (results) {
+            if (results) {
+                for (var i = 0; i < results.length; i++) {
+                    val += results[i].get("length");
+                }
+            }
+            promise.resolve(val / 3600);
+        });
 
-/*
- ================
- Monthly Goal
- ================
- */
-function setMonthlyGoal() {
-    var goal = timeStringToSeconds($("#goal_time_to_set_month").text());
-    var date = getShortDate(findFirstDateInMonth(getShortDate()));
-    setGoal(date, that.Constants.Parse.MONTHLY_GOAL_TYPE, goal).then(function () {
-        $("#setMonthlyGoalSection").hide();
-    });
-}
-
-function isMonthlyGoalSet(date) {
-    var promise = $.Deferred();
-    date = date ? getShortDate(date) : getShortDate(findFirstDateInMonth(getShortDate()));
-    $.when(isGoalSet(date, that.Constants.Parse.MONTHLY_GOAL_TYPE).done(function (value) {
-        promise.resolve(value);
-        if (!value) {
-            $("#setMonthlyGoalSection").show();
-        }
-        else {
-            $("#goalTime_month").text(getGoalTime(value.get("goal")));
-            $("#goal_time_to_set_month").text(getGoalTime(value.get("goal")));
-            $("#monthlyGoalSlider").slider("value", value.get("goal"));
-        }
-    }));
-
-    return promise.promise();
-}
-
-
-/*
- =====
- OTHER
- =====
- */
-function displayOtherTextBox() {
-    document.getElementById("stopReasonButtons").style.display = "none";
-    document.getElementById("otherTextBox").style.display = "inline";
-}
-function getTotalLapLengthByDate(startDate, endDate) {
+        return promise.promise();
+    },
+    getTotalLapLengthByDate:function(startDate, endDate) {
 
     var promise = $.Deferred();
 
@@ -768,199 +951,255 @@ function getTotalLapLengthByDate(startDate, endDate) {
     return promise.promise();
 }
 
-/*
- *  ----------------
- *  Dashboard
- *  ----------------
- * */
-
-
-function updateDashboard() {
-
-    var today = new Date(getShortDate());
-    var todayEnd = new Date(getShortDate());
-    todayEnd.setHours(23);
-    todayEnd.setMinutes(59);
-
-    // Update daily
-    isDailyGoalSet().then(function () {
-        toggleLoading('#dashboard_today_hours');
-        getTotalLapLengthByDate(today, todayEnd).then(function (value) {
-            $("#dashboard_today_hours").text(Math.ceil((value / 3600) * 10) / 10);
-            $("#dashboard_today_time").text(secondsToString(value));
-            var dailyGoal = timeStringToSeconds($("#goalTime_day").text());
-            $("#daily_goal_percentage").text(dividedValueToPercentage(value / dailyGoal));
-            if (value/dailyGoal >= 1){
-                $("#daily_goal_percentage").css('color','lightgreen');
-                $("#dashboard_today_hours").css('color','lightgreen');
-            }
-
-            var dailyGoalLeft = dailyGoal - value;
-
-            if (dailyGoalLeft > 0) {
-                var bestPossibleTime = new Date()
-                bestPossibleTime.setTime((dailyGoalLeft * that.Constants.General.MILLISECONDS) + bestPossibleTime.getTime());
-                bestPossibleTime = dateObjectToHHMM(bestPossibleTime);
-                $("#goalTime_day_best_time").text(bestPossibleTime);
-                $("#goalTime_day_left").text(secondsToString(dailyGoalLeft).substr(0, 5));
-            }
-            else {
-                $("#goalTime_day_best_time").text("N/A");
-                $("#goalTime_day_left").text(secondsToString(0).substr(0, 5));
-            }
-            toggleLoading('#dashboard_today_hours');
-        });
-    });
-
-    // Update weekly
-    isWeeklyGoalSet().then(function () {
-        toggleLoading('#dashboard_week_hours');
-        getTotalLapLengthByDate(findFirstDateInTheWeek(today), todayEnd).then(function (value) {
-            $("#dashboard_week_hours").text(Math.ceil((value / 3600) * 10) / 10);
-            $("#dashboard_week_time").text(secondsToString(value));
-            var weeklyGoal = timeStringToSeconds($("#goalTime_week").text());
-            $("#weekly_goal_percentage").text(dividedValueToPercentage(value / weeklyGoal));
-            if (value/weeklyGoal >= 1){
-                $("#weekly_goal_percentage").css('color','lightgreen');
-                $("#dashboard_week_hours").css('color','lightgreen');
-            }
-            var weeklyGoalLeft = weeklyGoal - value;
-            if (weeklyGoalLeft > 0) {
-                $("#goalTime_week_left").text(secondsToString(weeklyGoalLeft).substr(0, 5));
-            }
-            else {
-                $("#goalTime_week_left").text(secondsToString(0).substr(0, 5));
-            }
-            toggleLoading('#dashboard_week_hours');
-        });
-    });
-
-    // Update monthly
-    isMonthlyGoalSet().then(function () {
-        toggleLoading('#dashboard_month_hours');
-        getTotalLapLengthByDate(findFirstDateInMonth(today), todayEnd).then(function (value) {
-            $("#dashboard_month_hours").text(Math.ceil((value / 3600) * 10) / 10);
-            $("#dashboard_month_time").text(secondsToString(value));
-            var monthlyGoal = timeStringToSeconds($("#goalTime_month").text());
-            $("#monthly_goal_percentage").text(dividedValueToPercentage(value / monthlyGoal));
-            var monthlyGoalLeft = monthlyGoal - value;
-            if (value/monthlyGoal >= 1){
-                $("#monthly_goal_percentage").css('color','lightgreen');
-                $("#dashboard_month_hours").css('color','lightgreen');
-            }
-            if (monthlyGoalLeft > 0) {
-                $("#goalTime_month_left").text(secondsToString(monthlyGoalLeft).substr(0, 5));
-            }
-            else {
-                $("#goalTime_month_left").text(secondsToString(0).substr(0, 5));
-            }
-            toggleLoading('#dashboard_month_hours');
-        });
-    });
 }
+that.Utils = {
 
-function loadProjects() {
-    var Projects = Parse.Object.extend("Projects");
-    var query = new Parse.Query(Projects);
-    /*var username = Parse.User.current().get("username");*/
+    Time: {
+        convertSecondsToHours: function (seconds) {
+            seconds = parseInt(seconds);
+            return Math.ceil((seconds / 3600) * 10) / 10;
+        },
+        secondsToString: function (time) {
+            var h = m = s = ms = 0;
+            var newTime = '';
 
-    $('#projects_list').text(" ");
-    toggleLoading('#projects_list');
+            h = Math.floor(time / (60 * 60));
+            time = time % (60 * 60);
+            m = Math.floor(time / (60));
+            time = time % (60 );
+            s = Math.floor(time);
 
-    query.equalTo("user", Parse.User.current());
-    query.notEqualTo("state", that.Constants.Parse.STATE_DISABLED);
-    query.find().then(function (results) {
-        toggleLoading('#projects_list');
-        for (var i = 0; i < results.length; i++) {
-            var object = results[i];
-            addProject(object);
+            newTime = that.Utils.Time.pad(h, 2) + ':' + that.Utils.Time.pad(m, 2) + ':' + that.Utils.Time.pad(s, 2);
+            return newTime;
+        },
+        timeStringToSeconds: function (string) {
+            var number;
+
+            var hours = parseInt(string.split(":")[0]);
+            var minutes = parseInt(string.split(":")[1]);
+            var seconds = parseInt(string.split(":")[2]);
+            seconds = seconds || 0;
+
+            number = (hours * 3600) + (minutes * 60) + seconds;
+
+            return parseInt(number);
+
+        },
+        convertDateToHHMMString: function (date, offset) {
+            // date - a Date object
+            // offset - an amount in seconds to subtract or add to the time
+            date = offset ? (new Date(date - offset * 1000)) : date;
+            var hours = date.getHours() < 10 ? '0' + date.getHours() : date.getHours();
+            var minutes = date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes();
+            return hours + ":" + minutes;
+        },
+        pad: function (num, size) {
+            var s = "0000" + num;
+            return s.substr(s.length - size);
+        },
+        formatTime: function (time) {
+            var h = m = s = ms = 0;
+            var newTime = '';
+
+            h = Math.floor(time / (60 * 60 * 1000));
+            time = time % (60 * 60 * 1000);
+            m = Math.floor(time / (60 * 1000));
+            time = time % (60 * 1000);
+            s = Math.floor(time / 1000);
+
+            newTime = that.Utils.Time.pad(h, 2) + ':' + that.Utils.Time.pad(m, 2) + ':' + that.Utils.Time.pad(s, 2);
+            return newTime;
         }
-    });
-}
 
-function addProject(parseObject) {
-    var element =
-        "<div class='project' parseid='" + parseObject.id + "'>" + parseObject.get("title") +
-            "<span class='icon delete_icon' id='delete_icon' style='display:none'></span>" +
-            "</div>";
-    $('#projects_list').append(element);
-}
+    },
+    Date: {
+        getEndOfDayDate: function (date) {
+            var endDate = new Date(date);
+            endDate.setHours(23);
+            endDate.setMinutes(59);
+            return endDate;
+        },
+        getShortDate: function (date) {
 
-function deleteProject(parseid) {
-    var Projects = Parse.Object.extend("Projects");
-    var query = new Parse.Query(Projects);
-    query.equalTo("objectId", parseid);
-    query.first().then(function (proj) {
-        proj.set('state', that.Constants.Parse.STATE_DISABLED);
-        proj.save().then(function () {
-            $('#projects_list').text("");
-            loadProjects();
-        });
-    });
-}
-
-function onProjectLoad(id, title) {
-    var Project = Parse.Object.extend("Projects");
-    currentProject = new Project();
-    currentProject.id = id;
-    currentProjectTitle = title;
-
-    $('#projects_container').hide();
-    $('#project_title').text(currentProjectTitle);
-    $('#settings_icon').show();
-    $('#goals_icon').show();
-    if (that.Session.facebookLogin === true) {
-        $('#facebook_icon').show();
-    }
-    $('#chart_today_date').text(getShortDate());
-    $('#log_today_date').text(getShortDate());
-    var lastDayOfWeek = new Date(findFirstDateInTheWeek(getShortDate()));
-    lastDayOfWeek.setDate(lastDayOfWeek.getDate() + 6);
-    $('#chart_week_date').text(getShortDate(findFirstDateInTheWeek(getShortDate())) + " - " + getShortDate(lastDayOfWeek));
-    $('#chart_month_date').text(getShortDate(findFirstDateInMonth(getShortDate())) + " - " + getShortDate(findLastDateInMonth(getShortDate())));
-    loadApplication();
-
-}
-
-function onUserLogin() {
-    $('#user_login_container').hide();
-    $('#projects_container').fadeIn(1000);
-
-    // TODO:improve
-    if (that.Session.facebookLogin === true) {
-        FB.api(
-            "/me?fields=name",
-            function (response) {
-                if (response && !response.error) {
-                    $('#current_user').text(response.name);
-                }
+            if (!date) {
+                date = new Date();
             }
-        );
-    }
-    else {
-        $('#current_user').text(Parse.User.current().getUsername());
-    }
 
-    $('#settings_panel').show();
-    $('#user_panel').show();
+            var dd = date.getDate();
+            var mm = date.getMonth() + 1; //January is 0!
+            var yyyy = date.getFullYear();
+            if (dd < 10) {
+                dd = '0' + dd
+            }
+            if (mm < 10) {
+                mm = '0' + mm
+            }
+            date = mm + '/' + dd + '/' + yyyy;
+            return date;
+        },
+        findFirstDateInTheWeek: function (date) {
 
-    var projectIdFromCookie = that.CookieHandler.readCookie(that.Constants.Cookies.COOKIE_CURRENT_PROJECT);
-    var projectTitleFromCookie = that.CookieHandler.readCookie(that.Constants.Cookies.COOKIE_CURRENT_PROJECT_TITLE);
-    var isProjectCached = ((projectIdFromCookie != "") && (projectTitleFromCookie != "") && (projectIdFromCookie != null) && (projectTitleFromCookie != null));
-    if (isProjectCached == true) {
-        projectTitleFromCookie = decodeURIComponent(projectTitleFromCookie);
-        onProjectLoad(projectIdFromCookie, projectTitleFromCookie);
-    }
-    else {
-        loadProjects();
+            date = new Date(date);
+
+            while (date.getDay() != 0) {
+                date.setDate(date.getDate() - 1);
+            }
+
+            return date;
+        },
+        findFirstDateInMonth: function (date) {
+
+            date = new Date(date);
+
+            while (date.getDate() != 1) {
+                date.setDate(date.getDate() - 1);
+            }
+
+            return date;
+        },
+        findLastDateInMonth: function (date) {
+            var first = that.Utils.Date.findFirstDateInMonth(date);
+            var last = new Date();
+            last.setMonth(first.getMonth() + 1);
+            last.setDate(first.getDate() - 1);
+            last.setFullYear(first.getFullYear());
+            return last;
+        },
+        findLastDateInWeek: function (date) {
+            date = new Date(date);
+            var last = that.Utils.Date.findFirstDateInTheWeek(date);
+            last.setDate(date.getDate() + 6);
+            return last;
+        }
+    },
+    Math: {
+        percentageOfDivision: function (dividend, divisor) {
+            var percentage = parseInt(dividend) / parseInt(divisor);
+            percentage *= 100;
+            percentage = Math.ceil(percentage * 10) / 10;
+            percentage = (!isNaN(percentage) && percentage != Infinity) ? percentage : 0;
+            return percentage;
+        }
     }
 }
+that.Projects = {
+    loadProjects: function () {
+        var Projects = Parse.Object.extend("Projects");
+        var query = new Parse.Query(Projects);
+        /*var username = Parse.User.current().get("username");*/
 
-function loadApplication() {
-    $('#application').fadeIn(1000);
-    loadLogEntries();
-    showWarningIfNotAllGoalsAreSet();
-    updateAllObjects();
+        $('#projects_list').text(" ");
+        toggleLoading('#projects_list');
+
+        query.equalTo("user", Parse.User.current());
+        query.notEqualTo("state", that.Constants.Parse.STATE_DISABLED);
+        query.find().then(function (results) {
+            toggleLoading('#projects_list');
+            for (var i = 0; i < results.length; i++) {
+                var object = results[i];
+                that.Projects.addProject(object);
+            }
+        });
+    },
+    addProject: function (parseObject) {
+        var element =
+            "<div class='project' parseid='" + parseObject.id + "'>" + parseObject.get("title") +
+                "<span class='icon delete_icon' id='delete_icon' style='display:none'></span>" +
+                "</div>";
+        $('#projects_list').append(element);
+    },
+    deleteProject: function (parseid) {
+        var Projects = Parse.Object.extend("Projects");
+        var query = new Parse.Query(Projects);
+        query.equalTo("objectId", parseid);
+        query.first().then(function (proj) {
+            proj.set('state', that.Constants.Parse.STATE_DISABLED);
+            proj.save().then(function () {
+                $('#projects_list').text("");
+                that.Projects.loadProjects();
+            });
+        });
+    },
+    onProjectLoad: function (id, title) {
+        var Project = Parse.Object.extend("Projects");
+        currentProject = new Project();
+        currentProject.id = id;
+        currentProjectTitle = title;
+
+        $('#projects_container').hide();
+        $('#project_title').text(currentProjectTitle);
+        $('#settings_icon').show();
+        $('#goals_icon').show();
+        if (that.Session.facebookLogin === true) {
+            $('#facebook_icon').show();
+        }
+        $('#chart_today_date').text(that.Utils.Date.getShortDate());
+        $('#log_today_date').text(that.Utils.Date.getShortDate());
+        var lastDayOfWeek = new Date(that.Utils.Date.findFirstDateInTheWeek(that.Utils.Date.getShortDate()));
+        lastDayOfWeek.setDate(lastDayOfWeek.getDate() + 6);
+        $('#chart_week_date').text(that.Utils.Date.getShortDate(that.Utils.Date.findFirstDateInTheWeek(that.Utils.Date.getShortDate())) + " - " + that.Utils.Date.getShortDate(lastDayOfWeek));
+        $('#chart_month_date').text(that.Utils.Date.getShortDate(that.Utils.Date.findFirstDateInMonth(that.Utils.Date.getShortDate())) + " - " + that.Utils.Date.getShortDate(that.Utils.Date.findLastDateInMonth(that.Utils.Date.getShortDate())));
+        that.Session.loadApplication();
+
+    }
+}
+that.Dashboard = {
+    updateDashboard: function () {
+
+        var today = new Date(that.Utils.Date.getShortDate());
+        var todayEnd = that.Utils.Date.getEndOfDayDate(today);
+
+        that.Goals.isDailyGoalSet().then(function () {
+            toggleLoading('#dashboard_today_hours');
+            that.Laps.getTotalLapLengthByDate(today, todayEnd).then(function (totalLapLength) {
+                that.Dashboard.updateDashboardData(totalLapLength, '#dashboard_today')
+            });
+
+        });
+
+        that.Goals.isWeeklyGoalSet().then(function () {
+            toggleLoading('#dashboard_week_hours');
+            that.Laps.getTotalLapLengthByDate(that.Utils.Date.findFirstDateInTheWeek(today), todayEnd).then(function (totalLapLength) {
+                that.Dashboard.updateDashboardData(totalLapLength, '#dashboard_week')
+            });
+
+        });
+
+        that.Goals.isMonthlyGoalSet().then(function () {
+            toggleLoading('#dashboard_month_hours');
+            that.Laps.getTotalLapLengthByDate(that.Utils.Date.findFirstDateInMonth(today), todayEnd).then(function (totalLapLength) {
+                that.Dashboard.updateDashboardData(totalLapLength, '#dashboard_month')
+            });
+        });
+    },
+    updateDashboardData: function (totalLapLength, dashboardJQueryElement) {
+
+        var goal = that.Utils.Time.timeStringToSeconds($(dashboardJQueryElement + "_goal").text());
+        var percentageCompleted = that.Utils.Math.percentageOfDivision(totalLapLength, goal);
+        $(dashboardJQueryElement + "_hours").removeClass('completed');
+        $(dashboardJQueryElement + "_percentage").removeClass('completed');
+        $(dashboardJQueryElement + "_hours").text(that.Utils.Time.convertSecondsToHours(totalLapLength));
+        $(dashboardJQueryElement + "_time").text(that.Utils.Time.secondsToString(totalLapLength));
+        $(dashboardJQueryElement + "_percentage").text(percentageCompleted + "%");
+
+        if (percentageCompleted >= 100) {
+            $(dashboardJQueryElement + "_hours").addClass('completed');
+            $(dashboardJQueryElement + "_percentage").addClass('completed');
+        }
+
+        var goalLeft = goal - totalLapLength;
+        var bestPossibleTime = new Date()
+        bestPossibleTime.setTime((goalLeft * that.Constants.General.MILLISECONDS) + bestPossibleTime.getTime());
+        bestPossibleTime = goalLeft > 0 ? that.Utils.Time.convertDateToHHMMString(bestPossibleTime) : "N/A";
+
+        if ($(dashboardJQueryElement + "best_possible_time").length) {
+            $(dashboardJQueryElement + "best_possible_time").text(bestPossibleTime);
+        }
+        $(dashboardJQueryElement + "_left").text(that.Utils.Time.secondsToString(Math.max(goalLeft, 0)).substr(0, 5));
+
+        toggleLoading(dashboardJQueryElement + "_hours");
+    }
+
 }
 
 function toggleLoading(jqueryElementName, isShowAndHide) {
@@ -986,15 +1225,13 @@ function toggleLoading(jqueryElementName, isShowAndHide) {
     }
 }
 
-// ********
-// jQueryUI
-// ********
+
 $(function () {
     $("#manualLapSlider").slider({
         max: 36000,
         step: 300,
         slide: function (event, ui) {
-            $('#addManualLap_Length').text(getGoalTime(ui.value));
+            $('#addManualLap_Length').text(that.Goals.getGoalTime(ui.value));
         }
     });
 
@@ -1003,7 +1240,7 @@ $(function () {
         max: 10 * that.Constants.General.HOUR,
         step: 0.5 * that.Constants.General.HOUR,
         slide: function (event, ui) {
-            $('#goal_time_to_set_day').text(getGoalTime(ui.value));
+            $('#goal_time_to_set_day').text(that.Goals.getGoalTime(ui.value));
         }
     });
 
@@ -1011,7 +1248,7 @@ $(function () {
         max: 30 * that.Constants.General.HOUR,
         step: 1 * that.Constants.General.HOUR,
         slide: function (event, ui) {
-            $('#goal_time_to_set_week').text(getGoalTime(ui.value));
+            $('#goal_time_to_set_week').text(that.Goals.getGoalTime(ui.value));
         }
     });
 
@@ -1019,7 +1256,7 @@ $(function () {
         max: 95 * that.Constants.General.HOUR,
         step: 5 * that.Constants.General.HOUR,
         slide: function (event, ui) {
-            $('#goal_time_to_set_month').text(getGoalTime(ui.value));
+            $('#goal_time_to_set_month').text(that.Goals.getGoalTime(ui.value));
         }
     });
 
@@ -1048,527 +1285,68 @@ $(function () {
 
 });
 
-
-/* Chart */
-
-function getLaps(startDate, endDate) {
-    var promise = $.Deferred();
-    var Laps = Parse.Object.extend("Laps");
-    var query = new Parse.Query(Laps);
-
-    if (endDate === undefined || endDate === startDate) {
-        endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 1);
-    }
-
-
-    query.greaterThanOrEqualTo("createdAt", new Date(startDate));
-    query.lessThanOrEqualTo("createdAt", new Date(endDate));
-    query.limit(1000);
-    query.equalTo("project", currentProject);
-    //query.equalTo("date", "01/12/2014");
-    query.notEqualTo("isManualLap", true);
-    query.ascending("createdAt");
-    query.find().then(function (results) {
-        promise.resolve(results);
-    });
-    return promise.promise();
-}
-
-function findFirstLap(startDate, endDate) {
-    var promise = $.Deferred();
-    var Laps = Parse.Object.extend("Laps");
-    var query = new Parse.Query(Laps);
-    if (endDate === undefined || endDate === startDate) {
-        endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 1);
-    }
-    query.greaterThanOrEqualTo("createdAt", new Date(startDate));
-    query.lessThanOrEqualTo("createdAt", new Date(endDate));
-    query.limit(1000);
-    query.notEqualTo("isManualLap", true);
-    query.equalTo("project", currentProject);
-    query.ascending("createdAt");
-    query.first().then(function (result) {
-        var val = result ? (result.createdAt - (result.get("length") * that.Constants.General.MILLISECONDS)) : undefined;
-        promise.resolve(val);
-    });
-
-    return promise.promise();
-}
-
-function getManualLapTotalLength(startDate, endDate) {
-    var promise = $.Deferred();
-    var Laps = Parse.Object.extend("Laps");
-    var query = new Parse.Query(Laps);
-    var val = 0;
-    if (endDate === undefined || endDate === startDate) {
-        endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 1);
-    }
-
-    query.greaterThanOrEqualTo("createdAt", new Date(startDate));
-    query.lessThanOrEqualTo("createdAt", new Date(endDate));
-    query.limit(1000);
-    query.equalTo("isManualLap", true);
-    query.equalTo("project", currentProject);
-    query.find().then(function (results) {
-        if (results) {
-            for (var i = 0; i < results.length; i++) {
-                val += results[i].get("length");
+that.jQuery = {
+    Timer: {
+        init: function () {
+            // Restore unsaved lap if browser exited unexpectedly
+            var unsavedLap = that.CookieHandler.readCookie(that.Constants.Cookies.COOKIE_CURRENT_LAP);
+            if (unsavedLap > 0) {
+                that.Stopwatch.setLapTime(unsavedLap);
             }
-        }
-        promise.resolve(val / 3600);
-    });
+            $('#time').text(that.Utils.Time.formatTime(that.Stopwatch.time()));
 
-    return promise.promise();
-}
+        },
+        setjQuery: function () {
+            $('#start_timer_button').click(this.startTimer);
+        },
+        startTimer: function () {
+            var button = $('#start_timer_button');
+            var buttonText;
 
-function renderCharts() {
-    /*dailyChart().then(function () {
-     weeklyChart().then(function(){
-     monthlyChart();
-     });
-     });*/
-
-    dailyChart();
-    weeklyChart();
-    monthlyChart();
-}
-
-function dailyChart(date) {
-
-    var promise = $.Deferred();
-    var dps = [];
-    var manualDps = [];
-    var goalDps = [];
-    var firstLap;
-    var manualLapCount = 0;
-    var length = 0;
-
-    var dateToCheck = date ? date : getShortDate();
-
-    toggleLoading('#chart_today_chart_overlay', true);
-
-
-    // TODO: handle a case when there's no first lap!!!
-    findFirstLap(dateToCheck)  // Get the first lap (use it as the manual lap start time)
-        .then(function (result) {
-            if (result) {
-                firstLap = result;
-            }
-            ;
-        })
-        .then(function () {
-            return getManualLapTotalLength(dateToCheck);  // Get today's total manual lap time
-        })
-        .then(function (result) {
-            manualLapCount = result;
-            if (manualLapCount > 0) {
-                length = manualLapCount;
-                manualDps.push({x: firstLap, y: 0, markerColor: "yellow"});
-                manualDps.push({x: firstLap, y: manualLapCount, markerColor: "yellow", indexLabel: "M"});
-            }
-        })
-        .then(function () {
-            return getLaps(dateToCheck);
-        })
-        .then(function (results) {
-            for (var i = 0; i < results.length; i++) {
-                var object = results[i];
-                var lapEnd = object.createdAt;
-                var lapStart = new Date(lapEnd - (object.get("length") * 1000));
-
-                var dp = {x: lapStart, y: length, markerType: "none"};
-
-                // todo: consolidate points
-
-                dps.push(dp);
-                length += ((lapEnd - lapStart) / 1000 / 3600);
-                length = Math.ceil(length * 1000) / 1000;
-                dps.push({x: lapEnd, y: length, markerType: "none"});
-
-                if (setting_show_breaks_on_graphs == true) {
-                    if (((lapStart - prevLapEnd) > (1000 * 300))) {
-                        dps[dps.length - 3].indexLabel = "SB";
-                        dps[dps.length - 3].markerColor = "red";
-                        dps[dps.length - 3].markerType = "circle";
-                        dps[dps.length - 2].indexLabel = "EB";
-                        dps[dps.length - 2].markerColor = "red";
-                        dps[dps.length - 2].markerType = "circle";
-                    }
-                }
-                var prevLapEnd = lapEnd;
-            }
-
-            dps.sort(function (a, b) {
-                a = new Date(a.x);
-                b = new Date(b.x);
-                return a > b ? -1 : a < b ? 1 : 0;
-            });
-        }).then(function () {
-            return isDailyGoalSet(dateToCheck)
-        })
-        .then(function (value) {
-            if (dps.length > 0 && value) {
-                var goal = value.get("goal") / 3600;
-                goalDps.push({x: dps[0].x, y: goal});
-                goalDps.push({x: dps[dps.length - 1].x, y: goal});
-            }
-        })
-        .then(function () {
-
-            var chart = new CanvasJS.Chart("chart_today_chart",
-                {
-                    backgroundColor: "#f8f8f8",
-                    zoomEnabled: true,
-                    height: 290,
-//                    width: "30%",
-                    title: {
-                    },
-                    axisX: {
-                        valueFormatString: "HH:mm",
-                        /* interval:1,
-                         intervalType:"hour"*/
-                    },
-                    axisY: {
-                        includeZero: false,
-                        gridColor: "#f8f8f8",
-                        //valueFormatString: " "
-
-                    },
-                    data: [
-                        {
-                            type: "line",
-                            color: "#ea3955",
-                            dataPoints: dps
-                        },
-                        {
-                            type: "line",
-                            color: "#EAB608",
-                            dataPoints: manualDps
-                        },
-                        {
-                            type: "line",
-                            color: "#00CE72",
-                            dataPoints: goalDps
-                        }
-                    ]
-                });
-
-            if (dps.length > 0) {
-                chart.render();
+            if (button.text() == "Start") {
+                that.Stopwatch.clocktimer = setInterval(function () {
+                    that.Stopwatch.update()
+                }, that.Constants.General.UPDATE_INTERVAL);
+                that.Stopwatch.start();
             }
             else {
-                $('#chart_today_chart').text("No data");
+                that.Laps.saveLap(that.Utils.Time.timeStringToSeconds($('#time').text()), '#start_timer_button');
+                that.Stopwatch.stop();
+                document.title = "Stopped";
+                clearInterval(that.Stopwatch.clocktimer);
+                that.CookieHandler.eraseCookie(that.Constants.Cookies.COOKIE_CURRENT_LAP);
+                that.Stopwatch.reset();
             }
-            toggleLoading('#chart_today_chart_overlay', true);
-            promise.resolve();
+            buttonText = button.text() == "Start" ? "Stop" : "Start";
+            button.text(buttonText);
         }
-    );
-
-    return promise.promise();
+    }
 }
-
-function weeklyChart(date) {
-
-    var dps = [];
-    var manualDps = [];
-    var goalDps = [];
-    var firstLap;
-    var manualLapCount = 0;
-    var length = 0;
-    var promise = $.Deferred();
-
-    var dateToCheck = date ? date : getShortDate();
-    toggleLoading('#chart_week_chart_overlay', true);
-
-    var start = findFirstDateInTheWeek(dateToCheck);
-    var end = findLastDateInWeek(dateToCheck);
-
-    // TODO: handle a case when there's no first lap!!!
-    findFirstLap(start, end)  // Get the first lap (use it as the manual lap start time)
-        .then(function (result) {
-            if (result) {
-                firstLap = result;
-            }
-            ;
-        })
-        .then(function () {
-            return getManualLapTotalLength(start, end);  // Get total manual lap time
-        })
-        .then(function (result) {
-            manualLapCount = result;
-            if (manualLapCount > 0) {
-                length = manualLapCount;
-                if (firstLap) {
-                    manualDps.push({x: firstLap, y: 0, markerColor: "yellow"});
-                    manualDps.push({x: firstLap, y: manualLapCount, markerColor: "yellow", indexLabel: "M"});
-                }
-            }
-        })
-        .then(function () {
-            return getLaps(start, end);
-        })
-        .then(function (results) {
-            for (var i = 0; i < results.length; i++) {
-                var object = results[i];
-                var lapEnd = object.createdAt;
-                var lapStart = new Date(lapEnd - (object.get("length") * 1000));
-
-                var dp = {x: lapStart, y: length, markerType: "none"};
-
-                // todo: consolidate points
-
-                dps.push(dp);
-                length += ((lapEnd - lapStart) / 1000 / 3600);
-                length = Math.ceil(length * 1000) / 1000;
-                dps.push({x: lapEnd, y: length, markerType: "none"});
-
-                if (setting_show_breaks_on_graphs == true) {
-                    if (((lapStart - prevLapEnd) > (1000 * 300))) {
-                        dps[dps.length - 3].indexLabel = "SB";
-                        dps[dps.length - 3].markerColor = "red";
-                        dps[dps.length - 3].markerType = "circle";
-                        dps[dps.length - 2].indexLabel = "EB";
-                        dps[dps.length - 2].markerColor = "red";
-                        dps[dps.length - 2].markerType = "circle";
-                    }
-                }
-                var prevLapEnd = lapEnd;
-            }
-
-            dps.sort(function (a, b) {
-                a = new Date(a.x);
-                b = new Date(b.x);
-                return a > b ? -1 : a < b ? 1 : 0;
-            });
-        }).then(function () {
-            return isWeeklyGoalSet(start);
-        })
-        .then(function (value) {
-            if (dps.length > 0 && value) {
-                var goal = value.get("goal") / 3600;
-
-                goalDps.push({x: dps[0].x, y: goal});
-                goalDps.push({x: dps[dps.length - 1].x, y: goal});
-            }
-        })
-        .then(function () {
-
-            var chartx = new CanvasJS.Chart("chart_week_chart",
-                {
-                    backgroundColor: "#f8f8f8",
-                    zoomEnabled: true,
-                    height: 290,
-//                    width: 650,
-                    title: {
-                    },
-                    axisX: {
-                        valueFormatString: "DDD",
-                        interval: 1,
-                        intervalType: "day",
-                    },
-                    axisY: {
-                        includeZero: false,
-                        gridColor: "#f8f8f8",
-                        //valueFormatString: " "
-
-                    },
-                    data: [
-                        {
-                            type: "line",
-                            color: "#ea3955",
-                            dataPoints: dps
-                        },
-                        {
-                            type: "line",
-                            color: "#EAB608",
-                            dataPoints: manualDps
-                        },
-                        {
-                            type: "line",
-                            color: "#00CE72",
-                            dataPoints: goalDps
-                        }
-                    ]
-                });
-
-
-            if (dps.length > 0) {
-                chartx.render();
-            }
-            else {
-                $('#chart_week_chart').text("No data");
-            }
-            toggleLoading('#chart_week_chart_overlay', true);
-            promise.resolve();
-        }
-    );
-    return promise.promise();
-}
-
-function monthlyChart(date) {
-
-    var dps = [];
-    var manualDps = [];
-    var goalDps = [];
-    var firstLap;
-    var manualLapCount = 0;
-    var length = 0;
-
-    var dateToCheck = date ? date : getShortDate();
-    toggleLoading('#chart_month_chart_overlay', true);
-
-    var start = findFirstDateInMonth(dateToCheck);
-    var end = findLastDateInMonth(dateToCheck);
-
-    // TODO: handle a case when there's no first lap!!!
-    findFirstLap(start, end)  // Get the first lap (use it as the manual lap start time)
-        .then(function (result) {
-            if (result) {
-                firstLap = result;
-            }
-            ;
-        })
-        .then(function () {
-            return getManualLapTotalLength(start, end);  // Get total manual lap time
-        })
-        .then(function (result) {
-            manualLapCount = result;
-            if (manualLapCount > 0) {
-                length = manualLapCount;
-                if (firstLap) {
-                    manualDps.push({x: firstLap, y: 0, markerColor: "yellow"});
-                    manualDps.push({x: firstLap, y: manualLapCount, markerColor: "yellow", indexLabel: "M"});
-                }
-            }
-        })
-        .then(function () {
-            return getLaps(start, end);
-        })
-        .then(function (results) {
-            for (var i = 0; i < results.length; i++) {
-                var object = results[i];
-                var lapEnd = object.createdAt;
-                var lapStart = new Date(lapEnd - (object.get("length") * 1000));
-
-                var dp = {x: lapStart, y: length, markerType: "none"};
-
-                // todo: consolidate points
-
-                dps.push(dp);
-                length += ((lapEnd - lapStart) / 1000 / 3600);
-                length = Math.ceil(length * 1000) / 1000;
-                dps.push({x: lapEnd, y: length, markerType: "none"});
-
-                if (setting_show_breaks_on_graphs == true) {
-                    if (((lapStart - prevLapEnd) > (1000 * 300))) {
-                        dps[dps.length - 3].indexLabel = "SB";
-                        dps[dps.length - 3].markerColor = "red";
-                        dps[dps.length - 3].markerType = "circle";
-                        dps[dps.length - 2].indexLabel = "EB";
-                        dps[dps.length - 2].markerColor = "red";
-                        dps[dps.length - 2].markerType = "circle";
-                    }
-                }
-                var prevLapEnd = lapEnd;
-            }
-
-            dps.sort(function (a, b) {
-                a = new Date(a.x);
-                b = new Date(b.x);
-                return a > b ? -1 : a < b ? 1 : 0;
-            });
-        }).then(function () {
-            return isMonthlyGoalSet(start)
-        })
-        .then(function (value) {
-            if (dps.length > 0 && value) {
-                var goal = value.get("goal") / 3600;
-                goalDps.push({x: dps[0].x, y: goal});
-                goalDps.push({x: dps[dps.length - 1].x, y: goal});
-            }
-        })
-        .then(function () {
-
-            var chartx = new CanvasJS.Chart("chart_month_chart",
-                {
-                    backgroundColor: "#f8f8f8",
-                    zoomEnabled: true,
-                    height: 290,
-//                    width: 650,
-                    title: {
-                    },
-                    axisX: {
-                        valueFormatString: "DD",
-                        interval: 1,
-                        intervalType: "day",
-                    },
-                    axisY: {
-                        includeZero: false,
-                        gridColor: "#f8f8f8",
-                        //valueFormatString: " "
-
-                    },
-                    data: [
-                        {
-                            type: "line",
-                            color: "#ea3955",
-                            dataPoints: dps
-                        },
-                        {
-                            type: "line",
-                            color: "#EAB608",
-                            dataPoints: manualDps
-                        },
-                        {
-                            type: "line",
-                            color: "#00CE72",
-                            dataPoints: goalDps
-                        }
-                    ]
-                });
-
-            if (dps.length > 0) {
-                chartx.render();
-            }
-            else {
-                $('#chart_month_chart').text("No data");
-            }
-            toggleLoading('#chart_month_chart_overlay', true);
-
-        }
-    );
-}
-
-/*
- *  ----------------
- *  jQuery Functions
- *  ----------------
- * */
 
 $(document).ready(function () {
 
-    initParse();
+    that.Session.initParse();
+
+    that.jQuery.Timer.init();
+    that.jQuery.Timer.setjQuery();
 
     if (Parse.User.current() != null) {
+
         that.Session.facebookLogin = Parse.FacebookUtils.isLinked(Parse.User.current());
 
         if (that.Session.facebookLogin === true) {
             that.Facebook.init();
         }
         else {
-            onUserLogin();
+            that.Session.onUserLogin();
         }
     }
-
     $("#updateDayGoal").click(function () {
         $('#updateDayGoalDiv').slideToggle();
         $(this).toggleClass("grayButton-sel").toggleClass('grayButton');
     });
 
-    $('#addManualLap_Date').text(getShortDate());
+    $('#addManualLap_Date').text(that.Utils.Date.getShortDate());
 
     $('#addManualLapButton').click(function () {
         $('#addManualLapSection').slideToggle();
@@ -1578,7 +1356,7 @@ $(document).ready(function () {
     $('#addManualLap_Save').click(function () {
         var manualLapLength = $('#manualLapSlider').slider("value");
         //currentDailyProgress += manualLapLength;
-        saveLap(manualLapLength, this, function () {
+        that.Laps.saveLap(manualLapLength, this, function () {
             $('#addManualLapButton').click()
         }, true);
     });
@@ -1591,8 +1369,8 @@ $(document).ready(function () {
         $(this).next().toggle();
     });
 
-    // Calls the setGoal function (d/w/m) respectively by the calling element
-    $(".setGoalButton").click(function () {
+    // Calls the that.Goals.setGoal function (d/w/m) respectively by the calling element
+    $(".that.Goals.setGoalButton").click(function () {
         var fn = $(this).attr('id');
         fn = fn.replace('Button', '');
         window[fn]();
@@ -1661,7 +1439,7 @@ $(document).ready(function () {
             else {
                 Parse.User.logIn($('#username_input').val(), "password").then(function () {
                     toggleLoading($('#login_button'));
-                    onUserLogin();
+                    that.Session.onUserLogin();
                 });
             }
         });
@@ -1691,7 +1469,7 @@ $(document).ready(function () {
                 toggleLoading('#user_signup_button');
                 $('#user_signup').hide();
                 $('#login_button').show();
-                onUserLogin();
+                that.Session.onUserLogin();
             },
             error: function (user, error) {
                 // Show the error message somewhere and let the user try again.
@@ -1705,7 +1483,7 @@ $(document).ready(function () {
     $("#projects_container").on('click', '.project', function () {
         that.CookieHandler.createCookie(that.Constants.Cookies.COOKIE_CURRENT_PROJECT, $(this).attr("parseid"));
         that.CookieHandler.createCookie(that.Constants.Cookies.COOKIE_CURRENT_PROJECT_TITLE, $(this).text());
-        onProjectLoad($(this).attr("parseid"), $(this).text());
+        that.Projects.onProjectLoad($(this).attr("parseid"), $(this).text());
     });
 
     /* Project Delete */
@@ -1724,7 +1502,7 @@ $(document).ready(function () {
     $("#projects_container").on('click', '.delete_icon',
         function (event) {
             //alert($(this).parent().attr('parseid'));
-            deleteProject($(this).parent().attr('parseid'));
+            that.Projects.deleteProject($(this).parent().attr('parseid'));
             event.stopPropagation();
         }
     );
@@ -1740,7 +1518,7 @@ $(document).ready(function () {
         toggleLoading('#add_project_button');
         newProject.save({title: $('#project_title_input').val(), user: Parse.User.current(), state: that.Constants.Parse.STATE_ENABLED}).then(function (object) {
             toggleLoading('#add_project_button');
-            addProject(object);
+            that.Projects.addProject(object);
             $('#new_project_details').slideUp();
             $('#project_title_input').val("");
         });
@@ -1762,7 +1540,7 @@ $(document).ready(function () {
         $('#goals_icon').hide();
         $('#facebook_icon').hide();
         $('#log_table').text("");
-        loadProjects();
+        that.Projects.loadProjects();
         $('#projects_container').fadeIn();
     });
 
@@ -1771,10 +1549,10 @@ $(document).ready(function () {
         clearTimeout(timeOut);
         var date = new Date($('#chart_today_date').text());
         date.setDate(date.getDate() - 1);
-        date = getShortDate(date);
+        date = that.Utils.Date.getShortDate(date);
         $('#chart_today_date').text(date);
         timeOut = setTimeout(function () {
-            dailyChart(date)
+           that.Chart.dailyChart(date)
         }, that.Constants.General.CLICK_TIMEOUT);
     });
 
@@ -1782,10 +1560,10 @@ $(document).ready(function () {
         clearTimeout(timeOut);
         var date = new Date($('#chart_today_date').text());
         date.setDate(date.getDate() + 1);
-        date = getShortDate(date);
+        date = that.Utils.Date.getShortDate(date);
         $('#chart_today_date').text(date);
         timeOut = setTimeout(function () {
-            dailyChart(date)
+            that.Chart.dailyChart(date)
         }, that.Constants.General.CLICK_TIMEOUT);
     });
 
@@ -1793,11 +1571,11 @@ $(document).ready(function () {
         clearTimeout(timeOut);
         var date = new Date($('#chart_week_date').text().substr(0, 10));
         date.setDate(date.getDate() - 7);
-        var first = findFirstDateInTheWeek(date);
-        var last = findLastDateInWeek(first);
-        $('#chart_week_date').text(getShortDate(first) + " - " + getShortDate(last));
+        var first = that.Utils.Date.findFirstDateInTheWeek(date);
+        var last = that.Utils.Date.findLastDateInWeek(first);
+        $('#chart_week_date').text(that.Utils.Date.getShortDate(first) + " - " + that.Utils.Date.getShortDate(last));
         timeOut = setTimeout(function () {
-            weeklyChart(first)
+            that.Chart.weeklyChart(first)
         }, that.Constants.General.CLICK_TIMEOUT);
     });
 
@@ -1805,11 +1583,11 @@ $(document).ready(function () {
         clearTimeout(timeOut);
         var date = new Date($('#chart_week_date').text().substr(0, 10));
         date.setDate(date.getDate() + 7);
-        var first = findFirstDateInTheWeek(date);
-        var last = findLastDateInWeek(first);
-        $('#chart_week_date').text(getShortDate(first) + " - " + getShortDate(last));
+        var first = that.Utils.Date.findFirstDateInTheWeek(date);
+        var last = that.Utils.Date.findLastDateInWeek(first);
+        $('#chart_week_date').text(that.Utils.Date.getShortDate(first) + " - " + that.Utils.Date.getShortDate(last));
         timeOut = setTimeout(function () {
-            weeklyChart(first)
+            that.Chart.weeklyChart(first)
         }, that.Constants.General.CLICK_TIMEOUT);
     });
 
@@ -1818,24 +1596,24 @@ $(document).ready(function () {
         clearTimeout(timeOut);
         var date = new Date($('#chart_month_date').text().substr(0, 10));
         date.setMonth(date.getMonth() - 1);
-        var first = findFirstDateInMonth(date);
-        var last = findLastDateInMonth(date);
-        date = getShortDate(date);
-        $('#chart_month_date').text(getShortDate(first) + " - " + getShortDate(last));
+        var first = that.Utils.Date.findFirstDateInMonth(date);
+        var last = that.Utils.Date.findLastDateInMonth(date);
+        date = that.Utils.Date.getShortDate(date);
+        $('#chart_month_date').text(that.Utils.Date.getShortDate(first) + " - " + that.Utils.Date.getShortDate(last));
         timeOut = setTimeout(function () {
-            monthlyChart(first)
+            that.Chart.monthlyChart(first)
         }, that.Constants.General.CLICK_TIMEOUT);
     });
     $('#chart_month_forward_button').click(function () {
         clearTimeout(timeOut);
         var date = new Date($('#chart_month_date').text().substr(0, 10));
         date.setMonth(date.getMonth() + 1);
-        var first = findFirstDateInMonth(date);
-        var last = findLastDateInMonth(date);
-        date = getShortDate(date);
-        $('#chart_month_date').text(getShortDate(first) + " - " + getShortDate(last));
+        var first = that.Utils.Date.findFirstDateInMonth(date);
+        var last = that.Utils.Date.findLastDateInMonth(date);
+        date = that.Utils.Date.getShortDate(date);
+        $('#chart_month_date').text(that.Utils.Date.getShortDate(first) + " - " + that.Utils.Date.getShortDate(last));
         timeOut = setTimeout(function () {
-            monthlyChart(first)
+            that.Chart.monthlyChart(first)
         }, that.Constants.General.CLICK_TIMEOUT);
     });
 
@@ -1843,7 +1621,7 @@ $(document).ready(function () {
     $('#log_input').keypress(function (e) {
         var code = e.keyCode || e.which;
         if (code == that.Constants.General.ENTER_KEYCODE) {
-            var time = dateObjectToHHMM(new Date());
+            var time = that.Utils.Time.convertDateToHHMMString(new Date());
             var data = $(this).val();
             if (data != "") {
                 var Log = Parse.Object.extend("Logs");
@@ -1852,14 +1630,14 @@ $(document).ready(function () {
                 logEntry.save({
                     data: data,
                     time: time,
-                    date: getShortDate(),
+                    date: that.Utils.Date.getShortDate(),
                     project: currentProject,
                     type: that.Constants.Parse.LOG_ADD_ICON,
                     state: that.Constants.Parse.STATE_ENABLED
                 }).then(function (object) {
                         toggleLoading('#log_input');
                         $('#log_input').val("");
-                        addLogEntry(object);
+                        that.Log.addLogEntry(object);
                     });
             }
         }
@@ -1873,18 +1651,18 @@ $(document).ready(function () {
         clearTimeout(timeOut);
         var date = new Date($('#log_today_date').text());
         date.setDate(date.getDate() + margin);
-        date = getShortDate(date);
+        date = that.Utils.Date.getShortDate(date);
         $('#log_today_date').text(date);
         $('#log_table').text("");
 
         timeOut = setTimeout(function () {
-            if (getShortDate() === date) {
+            if (that.Utils.Date.getShortDate() === date) {
                 $('#log_input').show();
             }
             else {
                 $('#log_input').hide();
             }
-            loadLogEntries(date)
+            that.Log.loadLogEntries(date)
         }, that.Constants.General.CLICK_TIMEOUT);
     });
 
@@ -1913,41 +1691,6 @@ $(document).ready(function () {
 });
 
 
-/* Log */
-function loadLogEntries(date) {
-    $('#log_table').text(" ");
-    var Log = Parse.Object.extend("Logs");
-    var query = new Parse.Query(Log);
-    date = date ? date : getShortDate();
-    toggleLoading('#log_overlay', true);
-    query.equalTo("project", currentProject);
-    query.equalTo("date", date);
-    query.notEqualTo("state", that.Constants.Parse.STATE_DISABLED);
-    query.find().then(function (results) {
-        toggleLoading('#log_overlay', true);
-        for (var i = 0; i < results.length; i++) {
-            var object = results[i];
-            addLogEntry(object);
-        }
-    });
-}
 
-function addLogEntry(parseObject) {
-
-    /*<tr>
-     <td>ICON</td>
-     <td>11:11</td>
-     <td>Added Bla</td>
-     </tr>*/
-
-    var element =
-        "<tr parseid=''" + parseObject.id + "'>" +
-            /* "<td class='log_entry_icon'>"+parseObject.get("type")+"</td>" +*/
-            "<td class='log_entry_time'>" + parseObject.get("time") + "</td>" +
-            "<td class='log_entry_data'>" + parseObject.get("data") + "</td>"
-    "</tr>";
-
-    $('#log_table').append(element);
-}
 
 

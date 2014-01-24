@@ -33,7 +33,7 @@ ul {
     margin: 0;
 }
 
-#startButton {
+#start_timer_button {
     width: 100px;
     margin-left: auto;
     margin-right: auto;
@@ -225,7 +225,7 @@ ul {
 }
 
 .goalSlider {
-    width: 20%;
+    width: 30%;
     display: inline-block;
 }
 
@@ -372,6 +372,9 @@ ul {
 
 .goalTime {
     color: red;
+    display: inline-block;
+    margin-right: 10px;
+    width: 45px;
 }
 
 .goalTime:hover {
@@ -530,8 +533,6 @@ Chart
 
 }
 
-
-
 .overlay {
     background: darkgray;
     opacity: 0.3;
@@ -610,4 +611,8 @@ Chart
 
 .log_entry_icon, .log_entry_time{
     width: 5%;
+}
+
+.completed{
+    color:lightgreen;
 }

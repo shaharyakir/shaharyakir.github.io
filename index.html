@@ -14,7 +14,7 @@
     <title>Test</title>
     <link rel="stylesheet" type="text/css" href="style.css">
 </head>
-<body onload="show()">
+<body>
 <div id="fb-root"></div>
 <div id="outerBox">
 <div id="innerBox">
@@ -31,26 +31,26 @@
         <span style="margin-bottom: 12px;font-weight: bold;display: block;text-align: center">Your goals</span>
 
         <div id="daily_goal_container" class="goal_container">
-            <span>Daily</span>
+            <span style="display: inline-block;width: 70px">Daily</span>
             <span class="goalTime" id="goal_time_to_set_day">00:00</span>
-                    <span id="setDailyGoalSection" style="">
+                    <span id="set_daily_goal_section" style="">
                         <span id="dailyGoalSlider" class="slider goalSlider"></span>
                         <span id="setDailyGoalButton" class="smallGrayButton setGoalButton">Set</span>
                     </span>
         </div>
         <div id="weekly_goal_container" class="goal_container">
-            <span>Weekly</span>
+            <span style="display: inline-block;width: 70px">Weekly</span>
             <span class="goalTime" id="goal_time_to_set_week">00:00</span>
-                                    <span id="setWeeklyGoalSection" style="">
+                                    <span id="set_weekly_goal_section" style="">
 
                                     <span id="weeklyGoalSlider" class="slider goalSlider"></span>
                                     <span id="setWeeklyGoalButton" class="smallGrayButton setGoalButton">Set</span>
                     </span>
         </div>
         <div id="monthly_goal_container" class="goal_container">
-            <span>Monthly</span>
+            <span style="display: inline-block;width: 70px">Monthly</span>
             <span class="goalTime" id="goal_time_to_set_month">00:00</span>
-                                    <span id="setMonthlyGoalSection" style="">
+                                    <span id="set_monthly_goal_section" style="">
                                     <span id="monthlyGoalSlider" class="slider goalSlider"></span>
                                     <span id="setMonthlyGoalButton" class="smallGrayButton setGoalButton">Set</span>
                     </span>
@@ -131,17 +131,14 @@
             <div class="timerDiv">
                 <span id="time"></span>
             </div>
-            <span class="smallGrayButton" id="addManualLapButton">Add Manually</span>
-            <span class="smallGrayButton" id="startButton" onclick="start()">Start</span>
+            <span  class="smallGrayButton" id="addManualLapButton">Add Manually</span>
+            <span class="smallGrayButton" id="start_timer_button">Start</span>
         </div>
 
         <div class="" id="addManualLapSection" style="display: none">
-            <div style="display: none">Date:
-                <span id="addManualLap_Date"></span>
-            </div>
             <div style="margin-top: 8px">
                 <span>Length:</span>
-                <span id="addManualLap_Length">00:00</span>
+                <span style="display: inline-block;width:36px;margin-right: 12px" id="addManualLap_Length">00:00</span>
                 &nbsp
                 <span style="width:30%;display: inline-block" id="manualLapSlider"></span>
             </div>
@@ -170,19 +167,19 @@
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Goal</span>
-                        <span id="goalTime_day" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_today_goal" class="dashboard_details_data">00:00</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">% Completed</span>
-                        <span id="daily_goal_percentage" class="dashboard_details_data">0%</span>
+                        <span id="dashboard_today_percentage" class="dashboard_details_data">0%</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Left</span>
-                        <span id="goalTime_day_left" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_today_left" class="dashboard_details_data">00:00</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Best Possible</span>
-                        <span id="goalTime_day_best_time" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_today_best_possible_time" class="dashboard_details_data">00:00</span>
                     </div>
                 </div>
 
@@ -199,15 +196,15 @@
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Goal</span>
-                        <span id="goalTime_week" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_week_goal" class="dashboard_details_data">00:00</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">% Completed</span>
-                        <span id="weekly_goal_percentage" class="dashboard_details_data">0%</span>
+                        <span id="dashboard_week_percentage" class="dashboard_details_data">0%</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Left</span>
-                        <span id="goalTime_week_left" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_week_left" class="dashboard_details_data">00:00</span>
                     </div>
                 </div>
             </div>
@@ -223,7 +220,7 @@
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Goal</span>
-                        <span id="goalTime_month" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_month_goal" class="dashboard_details_data">00:00</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">% Completed</span>
@@ -231,7 +228,7 @@
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Left</span>
-                        <span id="goalTime_month_left" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_month_left" class="dashboard_details_data">00:00</span>
                     </div>
                 </div>
             </div>
