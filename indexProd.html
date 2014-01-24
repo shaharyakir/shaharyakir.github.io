@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script src="parse-1.2.13.js"></script>
+<script src="jquery-1.9.1.js"></script>
+<script src="jquery-ui-1.10.3.custom.js"></script>
+<script src="canvasjs.min.js"></script>
+<link href="jquery-ui-1.10.3.custom.css" rel="stylesheet">
+<!--<link rel="stylesheet" href="jquery-ui-1.10.3.custom/development-bundle/demos/demos.css">-->
+<link href='//fonts.googleapis.com/css?family=Exo+2' rel='stylesheet' type='text/css'>
+
+<script src="stopwatch.js"></script>
+<head>
+    <title>Prod</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body onload="show()">
+<div id="fb-root"></div>
+<div id="outerBox">
+<div id="innerBox">
+<div id="settings_panel">
+    <div class="icon" id="logo_icon" style="height: 32px;width: 32px;background-size: cover;background-repeat: no-repeat"></div>
+    <div class="icon" id="settings_icon" style="display: none"></div>
+    <div class="section panel" id="settings_container" style="display: none;height:50px">
+        <span style="margin-bottom: 12px;font-weight: bold;display: block;text-align: center">Settings</span>
+        <span> Show breaks on graphs</span>
+        <input id="setting_show_breaks_on_graphs" type="checkbox" style="width: 20px"/>
+    </div>
+    <div class="icon" id="goals_icon" style="display: none"></div>
+    <div class="section panel" id="set_goals_container" style="display: none">
+        <span style="margin-bottom: 12px;font-weight: bold;display: block;text-align: center">Your goals</span>
+
+        <div id="daily_goal_container" class="goal_container">
+            <span>Daily</span>
+            <span class="goalTime" id="goal_time_to_set_day">00:00</span>
+                    <span id="setDailyGoalSection" style="">
+                        <span id="dailyGoalSlider" class="slider goalSlider"></span>
+                        <span id="setDailyGoalButton" class="smallGrayButton setGoalButton">Set</span>
+                    </span>
+        </div>
+        <div id="weekly_goal_container" class="goal_container">
+            <span>Weekly</span>
+            <span class="goalTime" id="goal_time_to_set_week">00:00</span>
+                                    <span id="setWeeklyGoalSection" style="">
+
+                                    <span id="weeklyGoalSlider" class="slider goalSlider"></span>
+                                    <span id="setWeeklyGoalButton" class="smallGrayButton setGoalButton">Set</span>
+                    </span>
+        </div>
+        <div id="monthly_goal_container" class="goal_container">
+            <span>Monthly</span>
+            <span class="goalTime" id="goal_time_to_set_month">00:00</span>
+                                    <span id="setMonthlyGoalSection" style="">
+                                    <span id="monthlyGoalSlider" class="slider goalSlider"></span>
+                                    <span id="setMonthlyGoalButton" class="smallGrayButton setGoalButton">Set</span>
+                    </span>
+        </div>
+    </div>
+    <div class="icon" id="facebook_icon" style="display: none"></div>
+    <div id="user_panel" style="float: right; display: none">
+        <div class="icon" id="user_icon"></div>
+        <span id="current_user"></span>
+
+        <div id="user_log_out_panel" class="panel section" style="width: 60px;height: 10px;display: none">
+            <span id="user_log_out_button">Log Out</span>
+        </div>
+    </div>
+</div>
+
+<div id="user_login_container">
+    <h2>Welcome to Net Time</h2>
+
+    <div style="width: 250px;height: 50px" id="facebook_icon_large"></div>
+    <div style="margin-top:4px">
+        <div>Don't have facebook? <span id="login_with_nettime">Login with NetTime</span></div>
+
+        <div id="nettime_login_container" style="display: none">
+            <span style="font-size: 22px">Username</span>
+            <input id="username_input" style="font-size: 22px;width: 300px;margin-left: 12px;font-family: 'Exo 2'"
+                   type="email"/>
+            <span id="login_button" class="grayButton" style="font-size:22px;margin-left: 12px;padding:3px">Login</span>
+        </div>
+        <div style="display: none"><span id="back_to_login_with_facebook">Login with Facebook</span></div>
+    </div>
+
+
+    <div style="margin-top:8px;display:none" id="user_signup">
+        <span>No such user exists. Would you like to sign up?</span>
+        <span id="user_signup_button" class="smallGrayButton">Sign me up</span>
+    </div>
+</div>
+
+<div id="projects_container" style="display: none">
+    <h2>My Projects</h2>
+    <span style="">Choose your project:</span>
+
+    <div id="projects_list" class="section" style="margin-top:12px;width: 50%">
+    </div>
+    <div style="margin-top:8px">
+        <span id='show_new_project_details_button' class="smallGrayButton">Add Project</span>
+
+        <div id="new_project_details" style="display:none;margin-top:8px;width:50%">
+            <span style="font-size: 22px">Title</span>
+            <input id="project_title_input" style="font-size: 22px;width: 70%;margin-left: 12px;font-family: 'Exo 2'"
+                    />
+            <span id='add_project_button' class="smallGrayButton">Add</span>
+        </div>
+    </div>
+</div>
+<div id="application" style="display: none">
+
+
+<div id="title_and_timer_container" style="margin-bottom: 16px;">
+    <div id="title" style="float:left">
+        <h1 style="margin-bottom: 0">Net Time</h1>
+
+        <h2 id="project_title_container">
+            <span class="icon back_icon" style="display:none"></span>
+            <span> Project:</span>
+            <span id="project_title"></span>
+        </h2>
+    </div>
+    <div class="section" style=";float: right;margin-right: 8px">
+        <div style="text-align: center">
+            <img src="images/time.png"
+                 class="icon"/>
+            <span style="color:darkgray;font-size:18px;font-weight: bold">Time</span>
+        </div>
+        <div id="timerPanel" class="">
+            <div class="timerDiv">
+                <span id="time"></span>
+            </div>
+            <span class="smallGrayButton" id="addManualLapButton">Add Manually</span>
+            <span class="smallGrayButton" id="startButton" onclick="start()">Start</span>
+        </div>
+
+        <div class="" id="addManualLapSection" style="display: none">
+            <div style="display: none">Date:
+                <span id="addManualLap_Date"></span>
+            </div>
+            <div style="margin-top: 8px">
+                <span>Length:</span>
+                <span id="addManualLap_Length">00:00</span>
+                &nbsp
+                <span style="width:30%;display: inline-block" id="manualLapSlider"></span>
+            </div>
+            <span class="grayButton" id="addManualLap_Save">Save</span>
+        </div>
+    </div>
+    <div class="clear"></div>
+</div>
+<!-- Dashboard + Chart -->
+<div id="dashboard_chart_container" style="height: 375px;">
+    <div id="dashboard_container" class="section">
+        <div style="text-align: center">
+            <img class="icon" src="images/month.png"/>
+            <span style="color:darkgray;font-size:18px;font-weight: bold">Statistics</span>
+        </div>
+        <div id="dashboard_data_container">
+            <div id="dashboard_today">
+                <div style="text-align: center; font-weight: bold">
+                    <span id="dashboard_today_hours" style="font-size:72px;">0.0</span>
+                    <span style="font-size: 14px;color:darkgray">hours</span>
+                </div>
+                <div style="margin-top:32px">
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Total Time Spent</span>
+                        <span id="dashboard_today_time" class="dashboard_details_data">00:00:00</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Goal</span>
+                        <span id="goalTime_day" class="dashboard_details_data">00:00</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">% Completed</span>
+                        <span id="daily_goal_percentage" class="dashboard_details_data">0%</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Left</span>
+                        <span id="goalTime_day_left" class="dashboard_details_data">00:00</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Best Possible</span>
+                        <span id="goalTime_day_best_time" class="dashboard_details_data">00:00</span>
+                    </div>
+                </div>
+
+            </div>
+            <div id="dashboard_week" style="display: none">
+                <div style="text-align: center; font-weight: bold">
+                    <span id="dashboard_week_hours" style="font-size:72px;">0.0</span>
+                    <span style="font-size: 14px;color:darkgray">hours</span>
+                </div>
+                <div style="margin-top:32px">
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Total Time Spent</span>
+                        <span id="dashboard_week_time" class="dashboard_details_data">00:00:00</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Goal</span>
+                        <span id="goalTime_week" class="dashboard_details_data">00:00</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">% Completed</span>
+                        <span id="weekly_goal_percentage" class="dashboard_details_data">0%</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Left</span>
+                        <span id="goalTime_week_left" class="dashboard_details_data">00:00</span>
+                    </div>
+                </div>
+            </div>
+            <div id="dashboard_month" style="display: none">
+                <div style="text-align: center; font-weight: bold">
+                    <span id="dashboard_month_hours" style="font-size:72px;">00</span>
+                    <span style="font-size: 14px;color:darkgray">hours</span>
+                </div>
+                <div style="margin-top:32px">
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Total Time Spent</span>
+                        <span id="dashboard_month_time" class="dashboard_details_data">0.0</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Goal</span>
+                        <span id="goalTime_month" class="dashboard_details_data">00:00</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">% Completed</span>
+                        <span id="monthly_goal_percentage" class="dashboard_details_data">0%</span>
+                    </div>
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Left</span>
+                        <span id="goalTime_month_left" class="dashboard_details_data">00:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="dashboardButtons" class="day_week_month_buttons_container">
+                    <span id="dashboard_today_button"
+                          class="day_week_month_button day_week_month_button_selected">Day</span>
+            <span id="dashboard_week_button" class="day_week_month_button">Week</span>
+            <span id="dashboard_month_button" class="day_week_month_button">Month</span>
+        </div>
+    </div>
+
+    <div id="chart_container" class="section"
+         style="position:relative;height:inherit;width: 66%; float:right;margin-bottom: 20px; margin-right:8px">
+        <div style="text-align: center">
+            <img src="images/graph.png"
+                 class="icon"/>
+            <span style="color:darkgray;font-size:18px;font-weight: bold">Progress Graph</span>
+        </div>
+
+        <!--  <span class="smallGrayButton" onclick="dailyChart()">Refresh</span>
+
+
+          <span style="float: right;clear: both;">Date: <input type="text" id="datepicker"></span>
+-->
+        <div>
+            <div id="chart_today" style="height: 290px; width: 100%;margin-top: 12px">
+                <div style="text-align: center;" class="date">
+                    <span class="icon back_icon" id="chart_today_back_button"
+                          style="height: 14px;width:14px;z-index: 11"></span>
+                    <span id="chart_today_date" style="font-weight: bold"></span>
+                    <span class="icon forward_icon" id="chart_today_forward_button"
+                          style="height: 14px;width:14px"></span>
+                </div>
+                <div class=" overlay" id="chart_today_chart_overlay"></div>
+                <div id="chart_today_chart" class="chart">
+                </div>
+            </div>
+            <div id="chart_week" style="display:none;height: 290px; width: 100%;margin-top: 12px">
+                <div class="date" style="text-align: center;">
+                    <span class="icon back_icon" id="chart_week_back_button" style="height: 14px;width:14px"></span>
+                    <span id="chart_week_date" style="font-weight: bold"></span>
+                    <span class="icon forward_icon" id="chart_week_forward_button"
+                          style="height: 14px;width:14px"></span>
+                </div>
+                <div class="overlay" id="chart_week_chart_overlay"></div>
+                <div id="chart_week_chart">
+
+                </div>
+            </div>
+            <div id="chart_month" style="display:none;height: 290px; width: 100%;margin-top: 12px">
+                <div class="chart_date" style="text-align: center;">
+                    <span class="icon back_icon" id="chart_month_back_button" style="height: 14px;width:14px"></span>
+                    <span id="chart_month_date" class="date" style="font-weight: bold"></span>
+                    <span class="icon forward_icon" id="chart_month_forward_button"
+                          style="height: 14px;width:14px"></span>
+                </div>
+                <div class=" overlay" id="chart_month_chart_overlay"></div>
+                <div id="chart_month_chart">
+
+                </div>
+            </div>
+        </div>
+
+        <div id="chartButtons" class="day_week_month_buttons_container" style="text-align: center">
+                    <span id="chart_today_button"
+                          class="day_week_month_button day_week_month_button_selected">Day</span>
+            <span id="chart_week_button" class="day_week_month_button">Week</span>
+            <span id="chart_month_button" class="day_week_month_button">Month</span>
+        </div>
+
+    </div>
+</div>
+<div class="clear"></div>
+
+<div class="expandCollapseTitle" style="border-top-left-radius: 6px;border-top-right-radius: 6px">Log</div>
+<div id="log_container" class="section"
+     style="border-top-right-radius: 0px;border-top-left-radius: 0px;position: relative">
+    <div style="text-align: center;" class="log_date date">
+        <span class="icon back_icon log_today_move_button" id="log_today_back_button"
+              style="height: 14px;width:14px;z-index: 11"></span>
+        <span id="log_today_date" style="font-weight: bold"></span>
+        <span class="icon forward_icon log_today_move_button" id="log_today_forward_button"
+              style="height: 14px;width:14px"></span>
+    </div>
+    <input id="log_input" style="font-size: 22px;width: 100%;margin-bottom:12px;font-family: 'Exo 2'"
+           type="text"/>
+
+    <div class="overlay" id="log_overlay"></div>
+    <div id="log_rows" style="">
+        <table>
+            <tbody id="log_table">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div>
+</div>
+</div>
+<!--<div class="modal">
+    <div class="modal-inner section">
+
+        </div>
+    </div>
+</div>-->
+</body>
+</html>
