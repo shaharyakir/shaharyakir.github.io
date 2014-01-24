@@ -97,13 +97,14 @@ that.Facebook = {
                 xfbml: true  // parse XFBML
             });
 
-            toggleLoading('#facebook_icon_large');
-
             if (that.Session.facebookLogin === false) {
+
                 Parse.FacebookUtils.logIn(null, {
                     success: function (user) {
                         if (!user.existed()) {
                             console.log("User signed up and logged in through Facebook!");
+                            that.Session.facebookLogin = true;
+                            onUserLogin();
                         } else {
                             console.log("User logged in through Facebook!");
                             that.Session.facebookLogin = true;
@@ -117,9 +118,11 @@ that.Facebook = {
             }
             else {
                 console.log("User was already logged in through Facebook! Proceeding to nettime login");
+                that.Session.facebookLogin = true;
                 onUserLogin();
             }
         });
+
 
     },
     postToFacebook: function () {
@@ -145,6 +148,29 @@ that.Facebook = {
                 }
             }
         );
+    }
+}
+
+that.Goals = {
+    isAllGoalsSet: function () {
+        var promise = $.Deferred();
+        var answer = new Boolean(true);
+        isDailyGoalSet()
+            .then(function (value) {
+
+                answer = answer && (value != undefined);
+
+            })
+            .then(isWeeklyGoalSet()
+                .then(function (value) {
+                    answer = answer && (value != undefined);
+                }))
+            .then(isMonthlyGoalSet()
+                .then(function (value) {
+                    answer = answer && (value != undefined);
+                    promise.resolve(answer);
+                }));
+        return promise;
     }
 }
 
@@ -259,15 +285,20 @@ function saveLap(value, jqueryPressedElement, callback, isManual) {
 }
 
 function updateAllObjects() {
-    //buildWeekTable();
-    //updateProgressBar();
     updateDashboard();
-    areAllGoalsSet().then(function (value) {
-        if (value === true) {
-            $("#center_section").slideDown();
+    showWarningIfNotAllGoalsAreSet();
+    renderCharts();
+}
+
+function showWarningIfNotAllGoalsAreSet(){
+    that.Goals.isAllGoalsSet().then(function(value){
+        if (value !== true){
+            $('#warning_goals').show();
+        }
+        else{
+            $('#warning_goals').hide();
         }
     });
-    renderCharts();
 }
 
 /*
@@ -550,35 +581,6 @@ function show() {
 
  */
 
-/*
- ================
- All Goals
- ================
- */
-function areAllGoalsSet() {
-
-    var promise = $.Deferred();
-
-    var answer = new Boolean(true);
-
-    isDailyGoalSet()
-        .then(function (value) {
-
-            answer = answer && (value != undefined);
-
-        })
-        .then(isWeeklyGoalSet()
-            .then(function (value) {
-                answer = answer && (value != undefined);
-            }))
-        .then(isMonthlyGoalSet()
-            .then(function (value) {
-                answer = answer && (value != undefined);
-                promise.resolve(answer);
-            }));
-    return promise;
-}
-
 
 function getGoalTime(value) {
     return secondsToString(value).substr(0, 5);
@@ -787,13 +789,25 @@ function updateDashboard() {
             $("#dashboard_today_hours").text(Math.ceil((value / 3600) * 10) / 10);
             $("#dashboard_today_time").text(secondsToString(value));
             var dailyGoal = timeStringToSeconds($("#goalTime_day").text());
-            var dailyGoalLeft = dailyGoal - value;
-            $("#goalTime_day_left").text(secondsToString(dailyGoalLeft).substr(0, 5));
             $("#daily_goal_percentage").text(dividedValueToPercentage(value / dailyGoal));
-            var bestPossibleTime = new Date()
-            bestPossibleTime.setTime((dailyGoalLeft * that.Constants.General.MILLISECONDS) + bestPossibleTime.getTime());
-            bestPossibleTime = dateObjectToHHMM(bestPossibleTime);
-            $("#goalTime_day_best_time").text(bestPossibleTime);
+            if (value/dailyGoal >= 1){
+                $("#daily_goal_percentage").css('color','lightgreen');
+                $("#dashboard_today_hours").css('color','lightgreen');
+            }
+
+            var dailyGoalLeft = dailyGoal - value;
+
+            if (dailyGoalLeft > 0) {
+                var bestPossibleTime = new Date()
+                bestPossibleTime.setTime((dailyGoalLeft * that.Constants.General.MILLISECONDS) + bestPossibleTime.getTime());
+                bestPossibleTime = dateObjectToHHMM(bestPossibleTime);
+                $("#goalTime_day_best_time").text(bestPossibleTime);
+                $("#goalTime_day_left").text(secondsToString(dailyGoalLeft).substr(0, 5));
+            }
+            else {
+                $("#goalTime_day_best_time").text("N/A");
+                $("#goalTime_day_left").text(secondsToString(0).substr(0, 5));
+            }
             toggleLoading('#dashboard_today_hours');
         });
     });
@@ -806,8 +820,17 @@ function updateDashboard() {
             $("#dashboard_week_time").text(secondsToString(value));
             var weeklyGoal = timeStringToSeconds($("#goalTime_week").text());
             $("#weekly_goal_percentage").text(dividedValueToPercentage(value / weeklyGoal));
+            if (value/weeklyGoal >= 1){
+                $("#weekly_goal_percentage").css('color','lightgreen');
+                $("#dashboard_week_hours").css('color','lightgreen');
+            }
             var weeklyGoalLeft = weeklyGoal - value;
-            $("#goalTime_week_left").text(secondsToString(weeklyGoalLeft).substr(0, 5));
+            if (weeklyGoalLeft > 0) {
+                $("#goalTime_week_left").text(secondsToString(weeklyGoalLeft).substr(0, 5));
+            }
+            else {
+                $("#goalTime_week_left").text(secondsToString(0).substr(0, 5));
+            }
             toggleLoading('#dashboard_week_hours');
         });
     });
@@ -821,7 +844,16 @@ function updateDashboard() {
             var monthlyGoal = timeStringToSeconds($("#goalTime_month").text());
             $("#monthly_goal_percentage").text(dividedValueToPercentage(value / monthlyGoal));
             var monthlyGoalLeft = monthlyGoal - value;
-            $("#goalTime_month_left").text(secondsToString(monthlyGoalLeft).substr(0, 5));
+            if (value/monthlyGoal >= 1){
+                $("#monthly_goal_percentage").css('color','lightgreen');
+                $("#dashboard_month_hours").css('color','lightgreen');
+            }
+            if (monthlyGoalLeft > 0) {
+                $("#goalTime_month_left").text(secondsToString(monthlyGoalLeft).substr(0, 5));
+            }
+            else {
+                $("#goalTime_month_left").text(secondsToString(0).substr(0, 5));
+            }
             toggleLoading('#dashboard_month_hours');
         });
     });
@@ -894,7 +926,6 @@ function onUserLogin() {
     $('#user_login_container').hide();
     $('#projects_container').fadeIn(1000);
 
-
     // TODO:improve
     if (that.Session.facebookLogin === true) {
         FB.api(
@@ -928,6 +959,7 @@ function onUserLogin() {
 function loadApplication() {
     $('#application').fadeIn(1000);
     loadLogEntries();
+    showWarningIfNotAllGoalsAreSet();
     updateAllObjects();
 }
 
@@ -961,7 +993,7 @@ $(function () {
     $("#manualLapSlider").slider({
         max: 36000,
         step: 300,
-        change: function (event, ui) {
+        slide: function (event, ui) {
             $('#addManualLap_Length').text(getGoalTime(ui.value));
         }
     });
@@ -970,7 +1002,7 @@ $(function () {
     $("#dailyGoalSlider").slider({
         max: 10 * that.Constants.General.HOUR,
         step: 0.5 * that.Constants.General.HOUR,
-        change: function (event, ui) {
+        slide: function (event, ui) {
             $('#goal_time_to_set_day').text(getGoalTime(ui.value));
         }
     });
@@ -978,7 +1010,7 @@ $(function () {
     $("#weeklyGoalSlider").slider({
         max: 30 * that.Constants.General.HOUR,
         step: 1 * that.Constants.General.HOUR,
-        change: function (event, ui) {
+        slide: function (event, ui) {
             $('#goal_time_to_set_week').text(getGoalTime(ui.value));
         }
     });
@@ -986,7 +1018,7 @@ $(function () {
     $("#monthlyGoalSlider").slider({
         max: 95 * that.Constants.General.HOUR,
         step: 5 * that.Constants.General.HOUR,
-        change: function (event, ui) {
+        slide: function (event, ui) {
             $('#goal_time_to_set_month').text(getGoalTime(ui.value));
         }
     });
