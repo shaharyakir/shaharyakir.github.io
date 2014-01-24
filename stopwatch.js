@@ -1370,11 +1370,24 @@ $(document).ready(function () {
     });
 
     // Calls the that.Goals.setGoal function (d/w/m) respectively by the calling element
-    $(".that.Goals.setGoalButton").click(function () {
+    /*$(".setGoalButton").click(function () {
         var fn = $(this).attr('id');
         fn = fn.replace('Button', '');
+        fn = "that.Goals." + fn;
         window[fn]();
-    });
+    });*/
+
+    $('#setDailyGoalButton').click(function(){
+        that.Goals.setDailyGoal();
+    })
+
+    $('#setWeeklyGoalButton').click(function(){
+        that.Goals.setWeeklyGoal();
+    })
+
+    $('#setMonthlyGoalButton').click(function(){
+        that.Goals.setMonthlyGoal();
+    })
 
     $(".day_week_month_button").click(function () {
         $(this).siblings().removeClass('day_week_month_button_selected');
