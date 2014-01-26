@@ -120,8 +120,7 @@ ul {
 }
 
 .expandCollapseTitle {
-    background: #838383;
-    color: #FFFFFF;
+    background: #f3f3f3;
     padding: 8px;
     margin-top: 1px;
 }
@@ -261,7 +260,7 @@ ul {
 }
 
 .day_week_month_buttons_container {
-    position: absolute;
+    /*position: absolute;*/
     bottom: 5%;
     text-align: center;
 
