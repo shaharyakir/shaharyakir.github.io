@@ -1256,7 +1256,6 @@ that.Laps = {
             var weekTotal = 0;
             var dps = [];
             var currentDate = new Date(start);
-            console.log("Start:"+start+";End:"+end+";Datdiff:"+that.Utils.Date.dateDiff(end, currentDate));
             while (that.Utils.Date.dateDiff(end, currentDate) >= 0) {
                 weekTotal = 0;
                 for (var i = 0; i <= 6; i++) {
@@ -1477,8 +1476,8 @@ that.Session = {
     },
     loadApplication: function () {
         $('#application').fadeIn(1000);
-        chartWidth= $('#chart_container').width() * 0.9;
-        oldChartWidth = $('#chart_container').width() * 0.9;
+        that.Session.initWidth();
+        that.Session.handleScreenSize();
         that.Log.loadLogEntries();
         that.Session.updateAllObjects();
     },
@@ -1497,7 +1496,58 @@ that.Session = {
                 });
             }
         }
+    },
+    initWidth:function(){
+        oldChartWidth = $('#chart_container').width() * 0.9;
+        chartWidth = $('#chart_container').width() * 0.9;
+    },
+    handleScreenSize:function(){
+
+        chartWidth = $('#chart_container').width() * 0.9;
+        if (Math.abs(chartWidth-oldChartWidth)>30){
+            oldChartWidth = chartWidth
+            that.Chart.renderCharts();
+        }
+
+        var datePickerButtons = $('.day_week_month_button');
+        $(datePickerButtons).removeClass("day_week_month_button_narrow");
+        $(".date_picker_caption").removeClass("date_picker_caption_narrow");
+        $(".dashboard_details").removeClass("dashboard_details_narrow");
+
+        
+        for (var i = 0; i < datePickerButtons.length; i++) {
+            var obj = datePickerButtons[i];
+            var text = $(obj).text();
+            $(obj).text($(obj).attr("longName"));
+
+        }
+
+
+        var top,oldTop;
+        var shorten=false;
+        for (var i = 0; i < datePickerButtons.length; i++) {
+            var obj = datePickerButtons[i];
+            top=$(obj).position().top;
+            if (oldTop==undefined){oldTop=top;}
+            if (oldTop!=top){
+                shorten=true;
+                break;
+            }
+        }
+        if (shorten==true){
+            for (var i = 0; i < datePickerButtons.length; i++) {
+                var obj = datePickerButtons[i];
+                var text = $(obj).text();
+                $(obj).text($(obj).attr("shortName"));
+
+            }
+            $(datePickerButtons).addClass("day_week_month_button_narrow");
+            $(".date_picker_caption").addClass("date_picker_caption_narrow");
+            $(".dashboard_details").addClass("dashboard_details_narrow");
+        }
+
     }
+
 }
 that.Stopwatch = {
     clocktimer: 0,
@@ -1834,12 +1884,7 @@ $(document).ready(function () {
      }*/
     $(window).resize(function(){
 
-        chartWidth = $('#chart_container').width() * 0.9;
-        if (Math.abs(chartWidth-oldChartWidth)>30){
-            oldChartWidth = chartWidth
-            that.Chart.renderCharts();
-        }
-
+        that.Session.handleScreenSize();
     });
     $("#updateDayGoal").click(function () {
         $('#updateDayGoalDiv').slideToggle();

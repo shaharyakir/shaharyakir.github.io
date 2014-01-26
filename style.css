@@ -250,6 +250,10 @@ ul {
     margin-top: 12px;
 }
 
+.dashboard_details_narrow{
+    font-size:12px;
+}
+
 .dashboard_details_data {
     float: right;
 }
@@ -425,6 +429,10 @@ Chart
     cursor: pointer;
     border: 1px solid #E7E7E7;
     width: 46px;
+}
+
+.day_week_month_button_narrow{
+    width:14px;
 }
 
 .day_week_month_button:hover {
@@ -615,3 +623,15 @@ Chart
 .completed{
     color:lightgreen;
 }
+
+.date_picker_caption{
+    font-weight:bold;
+    font-size:20px;
+    vertical-align: super;
+}
+
+.date_picker_caption_narrow_screen{
+    font-size:16px;
+    width:14px;
+}
+
