@@ -11,7 +11,7 @@
 
 <script src="stopwatch.js"></script>
 <head>
-    <title>Test</title>
+    <title>NetTime (T)</title>
     <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
@@ -70,9 +70,9 @@
 
 <div id="user_login_container">
     <h2>Welcome to Net Time</h2>
-
-    <div style="width: 250px;height: 50px" id="facebook_icon_large"></div>
-    <div style="margin-top:4px">
+    <div style="width: 250px;height: 50px; display: inline-block" id="facebook_login_button"></div>
+    <div id="loading" style="display: none;vertical-align: super"></div>
+    <div style="margin-top:12px">
         <div>Don't have facebook? <span id="login_with_nettime">Login with NetTime</span></div>
 
         <div id="nettime_login_container" style="display: none">
@@ -92,21 +92,47 @@
 </div>
 
 <div id="projects_container" style="display: none">
-    <h2>My Projects</h2>
-    <span style="">Choose your project:</span>
 
-    <div id="projects_list" class="section" style="margin-top:12px;width: 50%">
-    </div>
-    <div style="margin-top:8px">
-        <span id='show_new_project_details_button' class="smallGrayButton">Add Project</span>
+    <div style="float: left; width: 45%">
+        <h2>My Projects</h2>
+        <span style="">Choose your project:</span>
 
-        <div id="new_project_details" style="display:none;margin-top:8px;width:50%">
-            <span style="font-size: 22px">Title</span>
-            <input id="project_title_input" style="font-size: 22px;width: 70%;margin-left: 12px;font-family: 'Exo 2'"
-                    />
-            <span id='add_project_button' class="smallGrayButton">Add</span>
+        <div id="projects_list" class="section" style="margin-top:12px;">
+        </div>
+        <div style="margin-top:8px">
+            <span id='show_new_project_details_button' class="smallGrayButton">Add Project</span>
+
+            <div id="new_project_details" style="display:none;margin-top:8px;">
+                <span style="font-size: 22px">Title</span>
+                <input id="project_title_input" style="font-size: 22px;margin-left: 12px;font-family: 'Exo 2'"
+                        />
+                <span id='add_project_button' class="smallGrayButton">Add</span>
+            </div>
         </div>
     </div>
+    <div style="float: right; width: 45%">
+        <div>
+            <h2>Dashboard</h2>
+            <div>
+                <span style="display:inline-block;width:144px;font-size:24px">Today:</span>
+                <span id="project_list_dashboard_day_hours" style="font-size:48px">00</span>
+                hours
+            </div>
+            <div>
+                <span style="display:inline-block;width:144px;font-size:24px">This Week:</span>
+                <span id="project_list_dashboard_week_hours" style="font-size:48px">00</span>
+                hours
+            </div>
+            <div>
+                <span style="display:inline-block;width:144px;font-size:24px">This Month:</span>
+                <span id="project_list_dashboard_month_hours" style="font-size:48px">00</span>
+                hours
+            </div>
+
+        </div>
+
+    </div>
+    <div class="clear"></div>
 </div>
 <div id="application" style="display: none">
 
@@ -151,47 +177,7 @@
             <span class="grayButton" id="addManualLap_Save">Save</span>
         </div>
     </div>
-    <div id="date_picker_container" class="section" style="float:right;margin-right:24px;width: 30%;">
-        <div style="text-align: center;margin-bottom: 24px;">
-            <img src="images/month.png"
-                 class="icon"/>
-            <span style="color:darkgray;font-size:18px;font-weight: bold">Date Picker</span>
-        </div>
-        <div>
-            <div id="date_picker_day" style="text-align: center;" class="date day">
-                    <span class="icon back_icon" id="date_picker_today_back_button"
-                          style="height: 32px;width:32px;z-index: 11"></span>
-                <span id="date_picker_today_date"
-                      style="font-weight: bold;font-size: 20px;vertical-align: super"></span>
-                    <span class="icon forward_icon" id="date_picker_today_forward_button"
-                          style="height: 32px;width:32px"></span>
-            </div>
-            <div id="date_picker_week" style="text-align: center;display: none" class="date week">
-                    <span class="icon back_icon" id="date_picker_week_back_button"
-                          style="height: 32px;width:32px;z-index: 11"></span>
-                <span id="date_picker_week_date"
-                      style="font-weight: bold;font-size: 20px;vertical-align: super">ddd</span>
-                    <span class="icon forward_icon" id="date_picker_week_forward_button"
-                          style="height: 32px;width:32px"></span>
-            </div>
-            <div id="date_picker_month" style="text-align: center;display: none" class="date month">
-                    <span class="icon back_icon" id="date_picker_month_back_button"
-                          style="height: 32px;width:32px;z-index: 11"></span>
-                <span id="date_picker_month_date"
-                      style="display: none"></span>
-                <span id="date_picker_month_caption"
-                                      style="font-weight: bold;font-size: 20px;vertical-align: super;width: 165px;display: inline-block"></span>
-                    <span class="icon forward_icon" id="date_picker_month_forward_button"
-                          style="height: 32px;width:32px"></span>
 
-            </div>
-        </div>
-        <div id="date_picker_day_button_container" class="day_week_month_buttons_container" style="text-align: center">
-            <span id="date_picker_day_button" class="day_week_month_button day_week_month_button_selected">Day</span>
-            <span id="date_picker_week_button" class="day_week_month_button">Week</span>
-            <span id="date_picker_month_button" class="day_week_month_button">Month</span>
-        </div>
-    </div>
 
     <div class="clear"></div>
 </div>
@@ -203,32 +189,74 @@
             <img class="icon" src="images/graph.png"/>
             <span id="dashboard_caption" style="color:darkgray;font-size:18px;font-weight: bold">Statistics</span>
         </div>
+        <div id="date_picker_container" class="" style="margin-top: 8px">
+            <!--<div style="text-align: center;margin-bottom: 24px;">-->
+            <!--<img src="images/month.png"-->
+            <!--class="icon"/>-->
+            <!--<span style="color:darkgray;font-size:18px;font-weight: bold">Date Picker</span>-->
+            <!--</div>-->
+            <div style="min-height: 30px">
+                <div id="date_picker_day" style="text-align: center;" class="date day">
+                    <span class="icon back_icon" id="date_picker_today_back_button"
+                          style="height: 24px;width:24px;float:left"></span>
+                <span id="date_picker_today_date"
+                      style="font-weight: bold;font-size: 20px;vertical-align: super"></span>
+                    <span class="icon forward_icon" id="date_picker_today_forward_button"
+                          style="height: 24px;width:24px;float:right"></span>
+                </div>
+                <div id="date_picker_week" style="text-align: center;display: none" class="date week">
+                    <span class="icon back_icon" id="date_picker_week_back_button"
+                          style="height: 24px;width:24px;float:left"></span>
+                <span id="date_picker_week_date"
+                      style="font-weight: bold;font-size: 14px;vertical-align: middle"></span>
+                    <span class="icon forward_icon" id="date_picker_week_forward_button"
+                          style="height: 24px;width:24px;float:right"></span>
+                </div>
+                <div id="date_picker_month" style="text-align: center;display: none" class="date month">
+                    <span class="icon back_icon" id="date_picker_month_back_button"
+                          style="height: 24px;width:24px;float:left"></span>
+                <span id="date_picker_month_date"
+                      style="display: none"></span>
+                <span id="date_picker_month_caption"
+                      style="font-weight: bold;font-size: 20px;vertical-align: super;width: 165px;display: inline-block"></span>
+                    <span class="icon forward_icon" id="date_picker_month_forward_button"
+                          style="height: 24px;width:24px;float:right"></span>
+
+                </div>
+            </div>
+            <div id="date_picker_button_container" class="day_week_month_buttons_container" style="text-align: center">
+                <span id="date_picker_day_button" class="day_week_month_button day_week_month_button_selected">Day</span>
+                <span id="date_picker_week_button" class="day_week_month_button">Week</span>
+                <span id="date_picker_month_button" class="day_week_month_button">Month</span>
+                <span id="date_picker_total_button" class="day_week_month_button">Total</span>
+            </div>
+        </div>
         <div id="dashboard_data_container">
-            <div id="dashboard_today" class="day">
+            <div id="dashboard_day" class="day">
                 <div style="text-align: center; font-weight: bold">
-                    <span id="dashboard_today_hours" style="font-size:72px;">0.0</span>
+                    <span id="dashboard_day_hours" style="font-size:72px;">0.0</span>
                     <span style="font-size: 14px;color:darkgray">hours</span>
                 </div>
                 <div style="margin-top:32px">
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Total Time Spent</span>
-                        <span id="dashboard_today_time" class="dashboard_details_data">00:00:00</span>
+                        <span id="dashboard_day_time" class="dashboard_details_data">00:00:00</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Goal</span>
-                        <span id="dashboard_today_goal" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_day_goal" class="dashboard_details_data">00:00</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">% Completed</span>
-                        <span id="dashboard_today_percentage" class="dashboard_details_data">0%</span>
+                        <span id="dashboard_day_percentage" class="dashboard_details_data">0%</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Left</span>
-                        <span id="dashboard_today_left" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_day_left" class="dashboard_details_data">00:00</span>
                     </div>
                     <div class="dashboard_details">
                         <span class="dashboard_details_title">Best Possible</span>
-                        <span id="dashboard_today_best_possible_time" class="dashboard_details_data">00:00</span>
+                        <span id="dashboard_day_best_possible_time" class="dashboard_details_data">00:00</span>
                     </div>
                 </div>
 
@@ -281,7 +309,20 @@
                     </div>
                 </div>
             </div>
+            <div id="dashboard_total" class="total" style="display: none">
+                <div style="text-align: center; font-weight: bold">
+                    <span id="dashboard_total_hours" style="font-size:72px;">00</span>
+                    <span style="font-size: 14px;color:darkgray">hours</span>
+                </div>
+                <div style="margin-top:32px">
+                    <div class="dashboard_details">
+                        <span class="dashboard_details_title">Total Time Spent</span>
+                        <span id="dashboard_total_time" class="dashboard_details_data">0.0</span>
+                    </div>
+                </div>
+            </div>
         </div>
+
     </div>
 
     <div id="chart_container" class="section"
@@ -314,6 +355,12 @@
             <div id="chart_month" class="month" style="display:none;height: 290px; width: 100%;margin-top: 12px">
 
                 <div id="chart_month_chart">
+
+                </div>
+            </div>
+            <div id="chart_total" class="total" style="display:none;height: 290px; width: 100%;margin-top: 12px">
+
+                <div id="chart_total_chart">
 
                 </div>
             </div>

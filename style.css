@@ -336,7 +336,7 @@ ul {
 /*line-height: 10px;*/
 /*}*/
 
-/*#dashboard_today{*/
+/*#{*/
 /*width:40%;*/
 /*}*/
 
@@ -424,7 +424,7 @@ Chart
     display: inline-block;
     cursor: pointer;
     border: 1px solid #E7E7E7;
-    width: 50px;
+    width: 46px;
 }
 
 .day_week_month_button:hover {
@@ -515,14 +515,14 @@ Chart
     background-image: url('images/facebook_hover.png');
 }
 
-#facebook_icon_large {
+#facebook_login_button {
     background-position: center;
     background-image: url('images/connect_with_facebook.png');
     background-size: contain;
     background-repeat: no-repeat;
 }
 
-#facebook_icon_large:hover {
+#facebook_login_button:hover {
     background-image: url('images/connect_with_facebook_hover.png');
 }
 
