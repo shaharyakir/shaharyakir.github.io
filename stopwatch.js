@@ -464,9 +464,11 @@ that.Chart = {
         that.Laps.findFirstLapInProject().then(function(value){
             if (value!=false){
                 var start = that.Utils.Date.findFirstDateInTheWeek(value);
+                start.setHours(0);
+                start.setMinutes(0);
                 var end = new Date();
                 end = that.Utils.Date.findLastWeekdayInMonth(end);
-                /*end = that.Utils.Date.getEndOfDayDate(end);*/
+                end = that.Utils.Date.getEndOfDayDate(end);
                 console.log(start,end);
                 that.Laps.getLapTotalGroupedByWeek(start,end).then(function (result) {
 
@@ -1514,7 +1516,7 @@ that.Session = {
         $(".date_picker_caption").removeClass("date_picker_caption_narrow");
         $(".dashboard_details").removeClass("dashboard_details_narrow");
 
-        
+
         for (var i = 0; i < datePickerButtons.length; i++) {
             var obj = datePickerButtons[i];
             var text = $(obj).text();
