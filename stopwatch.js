@@ -1345,6 +1345,11 @@ that.Projects = {
                 toggleLoading('#project_list_dashboard_month_hours');
                 $('#project_list_dashboard_month_hours').text(that.Utils.Time.convertSecondsToHours(value.length));
             });
+			toggleLoading('#project_list_dashboard_total_hours');
+            that.Laps.getTotalLapLengthByDate(new Date('01/01/1970'),todayEnd,false).then(function(value){
+                toggleLoading('#project_list_dashboard_total_hours');
+                $('#project_list_dashboard_total_hours').text(that.Utils.Time.convertSecondsToHours(value.length));
+            });
         }
     },
     loadProjects: function () {
